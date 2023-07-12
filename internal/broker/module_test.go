@@ -2,11 +2,11 @@ package broker
 
 import (
 	"context"
+	"github.com/MeysamBavi/go-broker/pkg/broker"
 	"github.com/stretchr/testify/assert"
 	"math/rand"
 	"sync"
 	"testing"
-	"therealbroker/pkg/broker"
 	"time"
 )
 

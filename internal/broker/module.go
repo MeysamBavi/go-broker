@@ -2,7 +2,7 @@ package broker
 
 import (
 	"context"
-	"therealbroker/pkg/broker"
+	"github.com/MeysamBavi/go-broker/pkg/broker"
 )
 
 type Module struct {

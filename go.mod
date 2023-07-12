@@ -1,4 +1,4 @@
-module therealbroker
+module github.com/MeysamBavi/go-broker
 
 go 1.19
 
