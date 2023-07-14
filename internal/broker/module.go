@@ -54,7 +54,8 @@ func (m *Module) Subscribe(ctx context.Context, subject string) (<-chan broker.M
 	ch := make(chan broker.Message)
 	wg.Add(1)
 	go func() {
-		message, err := m.msgStore.GetNextMessage(context.Background(), subject, nil, func() {
+		ctx := context.Background()
+		message, err := m.msgStore.GetNextMessage(ctx, subject, nil, func() {
 			wg.Done()
 		})
 		for {
@@ -64,7 +65,7 @@ func (m *Module) Subscribe(ctx context.Context, subject string) (<-chan broker.M
 				return
 			}
 			ch <- *message
-			message, err = m.msgStore.GetNextMessage(context.Background(), subject, &message.Id, nil)
+			message, err = m.msgStore.GetNextMessage(ctx, subject, &message.Id, nil)
 		}
 	}()
 

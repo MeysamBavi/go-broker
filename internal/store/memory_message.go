@@ -114,12 +114,16 @@ func (i *inMemoryMessage) GetNextMessage(ctx context.Context, subject string, pr
 	if beforeBlockCallBack == nil {
 		beforeBlockCallBack = func() {}
 	}
-	ss := i.getSubjectStore(subject)
-	var once sync.Once
-	defer once.Do(beforeBlockCallBack)
+	callBackCalled := false
+	defer func() {
+		if !callBackCalled {
+			beforeBlockCallBack()
+		}
+	}()
 
 	var id int
 	var err error
+	ss := i.getSubjectStore(subject)
 	if previousId == nil {
 		id = ss.idg.peekNextId()
 	} else {
@@ -136,6 +140,8 @@ func (i *inMemoryMessage) GetNextMessage(ctx context.Context, subject string, pr
 
 	condChan := ss.GetCondChannelOf(id)
 
+	once := make(chan struct{}, 1)
+	once <- struct{}{}
 	for {
 		select {
 		case <-ctx.Done():
@@ -143,8 +149,9 @@ func (i *inMemoryMessage) GetNextMessage(ctx context.Context, subject string, pr
 		case <-condChan:
 			message, _ = ss.GetMessage(id)
 			return message.Message, nil
-		default:
-			once.Do(beforeBlockCallBack)
+		case <-once:
+			beforeBlockCallBack()
+			callBackCalled = true
 		}
 	}
 }
