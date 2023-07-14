@@ -10,7 +10,7 @@ type Message struct {
 	// This parameter is optional. If it's not provided,
 	// the Message can't be accessible through Fetch()
 	// id is unique per every subject
-	id int
+	Id int
 	// Body of the message
 	Body string
 	// The time that message can be accessible through Fetch()
