@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"github.com/MeysamBavi/go-broker/pkg/broker"
+	"time"
 )
 
 type Message interface {
@@ -15,3 +16,7 @@ var (
 	ErrInvalidId = errors.New("no message exists with given id")
 	ErrExpired   = errors.New("this message is expired")
 )
+
+type TimeProvider interface {
+	GetCurrentTime() time.Time
+}
