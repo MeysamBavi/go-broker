@@ -1,6 +1,6 @@
-package therealbroker
+package main
 
-import "fmt"
+import "github.com/MeysamBavi/go-broker/api/server"
 
 // Main requirements:
 // 1. All tests should be passed
@@ -9,5 +9,7 @@ import "fmt"
 // 	  for every base functionality ( publish, subscribe etc. )
 
 func main() {
-	fmt.Println("Hello!")
+	server.Execute(server.Config{
+		Host: "localhost:50043",
+	})
 }
