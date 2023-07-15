@@ -5,16 +5,26 @@ import (
 	"fmt"
 	"github.com/MeysamBavi/go-broker/internal/store"
 	"github.com/MeysamBavi/go-broker/pkg/broker"
+	"sync"
+	"time"
 )
 
 type Module struct {
-	msgStore    store.Message
-	subscribers store.Subscriber
-	closed      bool
+	msgStore store.Message
+	closed   bool
 }
 
 func NewModule() broker.Broker {
-	return &Module{}
+	return &Module{
+		msgStore: store.NewInMemoryMessage(timeProvider{}),
+		closed:   false,
+	}
+}
+
+type timeProvider struct{}
+
+func (tp timeProvider) GetCurrentTime() time.Time {
+	return time.Now()
 }
 
 func (m *Module) Close() error {
@@ -31,7 +41,6 @@ func (m *Module) Publish(ctx context.Context, subject string, msg broker.Message
 	if err != nil {
 		return 0, fmt.Errorf("unexpected error while saving message: %w", err)
 	}
-	m.subscribers.Publish(subject, &msg)
 
 	return msg.Id, nil
 }
@@ -41,12 +50,27 @@ func (m *Module) Subscribe(ctx context.Context, subject string) (<-chan broker.M
 		return nil, broker.ErrUnavailable
 	}
 
+	var wg sync.WaitGroup
 	ch := make(chan broker.Message)
-	callback := func(msg *broker.Message) {
-		ch <- *msg
-	}
-	m.subscribers.AddSubscriber(subject, callback)
+	wg.Add(1)
+	go func() {
+		ctx := context.Background()
+		message, err := m.msgStore.GetNextMessage(ctx, subject, nil, func() {
+			wg.Done()
+		})
+		for {
+			if err != nil {
+				// TODO: Log error
+				fmt.Println(err)
+				close(ch)
+				return
+			}
+			ch <- *message
+			message, err = m.msgStore.GetNextMessage(ctx, subject, &message.Id, nil)
+		}
+	}()
 
+	wg.Wait()
 	return ch, nil
 }
 
