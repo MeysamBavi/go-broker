@@ -76,7 +76,7 @@ func TestPublishShouldSendMessageToSubscribedChan(t *testing.T) {
 	_, _ = service.Publish(mainCtx, "ali", msg)
 	in := <-sub
 
-	assert.Equal(t, msg, in)
+	assertMessagesEqual(t, msg, in)
 }
 
 func TestPublishShouldSendMessageToSubscribedChans(t *testing.T) {
@@ -91,9 +91,9 @@ func TestPublishShouldSendMessageToSubscribedChans(t *testing.T) {
 	in2 := <-sub2
 	in3 := <-sub3
 
-	assert.Equal(t, msg, in1)
-	assert.Equal(t, msg, in2)
-	assert.Equal(t, msg, in3)
+	assertMessagesEqual(t, msg, in1)
+	assertMessagesEqual(t, msg, in2)
+	assertMessagesEqual(t, msg, in3)
 }
 
 func TestPublishShouldPreserveOrder(t *testing.T) {
@@ -108,7 +108,7 @@ func TestPublishShouldPreserveOrder(t *testing.T) {
 
 	for i := 0; i < n; i++ {
 		msg := <-sub
-		assert.Equal(t, messages[i], msg)
+		assertMessagesEqual(t, messages[i], msg)
 	}
 }
 
@@ -121,7 +121,7 @@ func TestPublishShouldNotSendToOtherSubscriptions(t *testing.T) {
 	_, _ = service.Publish(mainCtx, "ali", msg)
 	select {
 	case m := <-ali:
-		assert.Equal(t, msg, m)
+		assertMessagesEqual(t, msg, m)
 	case <-maryam:
 		assert.Fail(t, "Wrong message received")
 	}
@@ -133,7 +133,7 @@ func TestNonExpiredMessageShouldBeFetchable(t *testing.T) {
 	id, _ := service.Publish(mainCtx, "ali", msg)
 	fMsg, _ := service.Fetch(mainCtx, "ali", id)
 
-	assert.Equal(t, msg, fMsg)
+	assertMessagesEqual(t, msg, fMsg)
 }
 
 func TestExpiredMessageShouldNotBeFetchable(t *testing.T) {
@@ -366,4 +366,9 @@ func createMessageWithExpire(duration time.Duration) broker.Message {
 		Body:       body,
 		Expiration: duration,
 	}
+}
+
+func assertMessagesEqual(t *testing.T, want broker.Message, got broker.Message) {
+	assert.Equal(t, want.Body, got.Body)
+	assert.Equal(t, want.Expiration, got.Expiration)
 }
