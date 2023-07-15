@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package broker;
 
-option go_package = "broker/api/proto";
+option go_package = "github.com/MeysamBavi/go-broker/api/proto";
 
 service Broker {
   // Publish returns an id if the delivery is successful
