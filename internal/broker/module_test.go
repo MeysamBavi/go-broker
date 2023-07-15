@@ -23,6 +23,7 @@ func TestMain(m *testing.M) {
 }
 
 func TestPublishShouldFailOnClosed(t *testing.T) {
+	service = NewModule()
 	msg := createMessage()
 
 	err := service.Close()
@@ -33,6 +34,7 @@ func TestPublishShouldFailOnClosed(t *testing.T) {
 }
 
 func TestSubscribeShouldFailOnClosed(t *testing.T) {
+	service = NewModule()
 	err := service.Close()
 	assert.Nil(t, err)
 
@@ -41,6 +43,7 @@ func TestSubscribeShouldFailOnClosed(t *testing.T) {
 }
 
 func TestFetchShouldFailOnClosed(t *testing.T) {
+	service = NewModule()
 	err := service.Close()
 	assert.Nil(t, err)
 
@@ -49,6 +52,7 @@ func TestFetchShouldFailOnClosed(t *testing.T) {
 }
 
 func TestPublishShouldNotFail(t *testing.T) {
+	service = NewModule()
 	msg := createMessage()
 
 	_, err := service.Publish(mainCtx, "ali", msg)
@@ -57,6 +61,7 @@ func TestPublishShouldNotFail(t *testing.T) {
 }
 
 func TestSubscribeShouldNotFail(t *testing.T) {
+	service = NewModule()
 	sub, err := service.Subscribe(mainCtx, "ali")
 
 	assert.Equal(t, nil, err)
@@ -64,16 +69,18 @@ func TestSubscribeShouldNotFail(t *testing.T) {
 }
 
 func TestPublishShouldSendMessageToSubscribedChan(t *testing.T) {
+	service = NewModule()
 	msg := createMessage()
 
 	sub, _ := service.Subscribe(mainCtx, "ali")
 	_, _ = service.Publish(mainCtx, "ali", msg)
 	in := <-sub
 
-	assert.Equal(t, msg, in)
+	assertMessagesEqual(t, msg, in)
 }
 
 func TestPublishShouldSendMessageToSubscribedChans(t *testing.T) {
+	service = NewModule()
 	msg := createMessage()
 
 	sub1, _ := service.Subscribe(mainCtx, "ali")
@@ -84,12 +91,13 @@ func TestPublishShouldSendMessageToSubscribedChans(t *testing.T) {
 	in2 := <-sub2
 	in3 := <-sub3
 
-	assert.Equal(t, msg, in1)
-	assert.Equal(t, msg, in2)
-	assert.Equal(t, msg, in3)
+	assertMessagesEqual(t, msg, in1)
+	assertMessagesEqual(t, msg, in2)
+	assertMessagesEqual(t, msg, in3)
 }
 
 func TestPublishShouldPreserveOrder(t *testing.T) {
+	service = NewModule()
 	n := 50
 	messages := make([]broker.Message, n)
 	sub, _ := service.Subscribe(mainCtx, "ali")
@@ -100,11 +108,12 @@ func TestPublishShouldPreserveOrder(t *testing.T) {
 
 	for i := 0; i < n; i++ {
 		msg := <-sub
-		assert.Equal(t, messages[i], msg)
+		assertMessagesEqual(t, messages[i], msg)
 	}
 }
 
 func TestPublishShouldNotSendToOtherSubscriptions(t *testing.T) {
+	service = NewModule()
 	msg := createMessage()
 	ali, _ := service.Subscribe(mainCtx, "ali")
 	maryam, _ := service.Subscribe(mainCtx, "maryam")
@@ -112,21 +121,23 @@ func TestPublishShouldNotSendToOtherSubscriptions(t *testing.T) {
 	_, _ = service.Publish(mainCtx, "ali", msg)
 	select {
 	case m := <-ali:
-		assert.Equal(t, msg, m)
+		assertMessagesEqual(t, msg, m)
 	case <-maryam:
 		assert.Fail(t, "Wrong message received")
 	}
 }
 
 func TestNonExpiredMessageShouldBeFetchable(t *testing.T) {
+	service = NewModule()
 	msg := createMessageWithExpire(time.Second * 10)
 	id, _ := service.Publish(mainCtx, "ali", msg)
 	fMsg, _ := service.Fetch(mainCtx, "ali", id)
 
-	assert.Equal(t, msg, fMsg)
+	assertMessagesEqual(t, msg, fMsg)
 }
 
 func TestExpiredMessageShouldNotBeFetchable(t *testing.T) {
+	service = NewModule()
 	msg := createMessageWithExpire(time.Millisecond * 500)
 	id, _ := service.Publish(mainCtx, "ali", msg)
 	ticker := time.NewTicker(time.Second)
@@ -139,6 +150,7 @@ func TestExpiredMessageShouldNotBeFetchable(t *testing.T) {
 }
 
 func TestNewSubscriptionShouldNotGetPreviousMessages(t *testing.T) {
+	service = NewModule()
 	msg := createMessage()
 	_, _ = service.Publish(mainCtx, "ali", msg)
 	sub, _ := service.Subscribe(mainCtx, "ali")
@@ -174,6 +186,7 @@ func TestConcurrentSubscribesOnOneSubjectShouldNotFail(t *testing.T) {
 }
 
 func TestConcurrentSubscribesShouldNotFail(t *testing.T) {
+	service = NewModule()
 	ticker := time.NewTicker(2000 * time.Millisecond)
 	defer ticker.Stop()
 	var wg sync.WaitGroup
@@ -197,6 +210,7 @@ func TestConcurrentSubscribesShouldNotFail(t *testing.T) {
 }
 
 func TestConcurrentPublishOnOneSubjectShouldNotFail(t *testing.T) {
+	service = NewModule()
 	ticker := time.NewTicker(500 * time.Millisecond)
 	defer ticker.Stop()
 	var wg sync.WaitGroup
@@ -222,6 +236,7 @@ func TestConcurrentPublishOnOneSubjectShouldNotFail(t *testing.T) {
 }
 
 func TestConcurrentPublishShouldNotFail(t *testing.T) {
+	service = NewModule()
 	ticker := time.NewTicker(500 * time.Millisecond)
 	defer ticker.Stop()
 	var wg sync.WaitGroup
@@ -247,6 +262,7 @@ func TestConcurrentPublishShouldNotFail(t *testing.T) {
 }
 
 func TestDataRace(t *testing.T) {
+	service = NewModule()
 	duration := 500 * time.Millisecond
 	ticker := time.NewTicker(duration)
 	defer ticker.Stop()
@@ -307,6 +323,7 @@ func TestDataRace(t *testing.T) {
 }
 
 func BenchmarkPublish(b *testing.B) {
+	service = NewModule()
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
@@ -316,6 +333,7 @@ func BenchmarkPublish(b *testing.B) {
 }
 
 func BenchmarkSubscribe(b *testing.B) {
+	service = NewModule()
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
@@ -348,4 +366,9 @@ func createMessageWithExpire(duration time.Duration) broker.Message {
 		Body:       body,
 		Expiration: duration,
 	}
+}
+
+func assertMessagesEqual(t *testing.T, want broker.Message, got broker.Message) {
+	assert.Equal(t, want.Body, got.Body)
+	assert.Equal(t, want.Expiration, got.Expiration)
 }
