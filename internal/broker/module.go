@@ -62,6 +62,7 @@ func (m *Module) Subscribe(ctx context.Context, subject string) (<-chan broker.M
 			if err != nil {
 				// TODO: Log error
 				fmt.Println(err)
+				close(ch)
 				return
 			}
 			ch <- *message
