@@ -20,3 +20,13 @@ var (
 type TimeProvider interface {
 	GetCurrentTime() time.Time
 }
+
+type timeProvider struct{}
+
+func GetDefaultTimeProvider() TimeProvider {
+	return timeProvider{}
+}
+
+func (tp timeProvider) GetCurrentTime() time.Time {
+	return time.Now()
+}
