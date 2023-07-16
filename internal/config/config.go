@@ -43,7 +43,7 @@ func Default() Config {
 			UseCassandra: false,
 			Cassandra: store.CassandraConfig{
 				Host:     "localhost:9042",
-				Keyspace: "go-broker",
+				Keyspace: "go_broker",
 			},
 		},
 	}
