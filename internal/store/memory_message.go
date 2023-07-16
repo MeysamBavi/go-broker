@@ -20,39 +20,15 @@ func (i *idGen) nextId() int {
 	return i.value
 }
 
-func (i *idGen) nextOf(id int) (int, error) {
-	i.lock.Lock()
-	defer i.lock.Unlock()
-
-	if id > i.value {
-		return 0, ErrInvalidId
-	}
-	return id + 1, nil
-}
-
-func (i *idGen) peekNextId() int {
-	i.lock.Lock()
-	defer i.lock.Unlock()
-
-	return i.value + 1
-}
-
 type subjectStore struct {
-	idg          idGen
-	messages     sync.Map
-	condChannels sync.Map
+	idg      idGen
+	messages sync.Map
 }
 
 func (s *subjectStore) SaveMessage(message messageWithDeadline) error {
 	newId := s.idg.nextId()
 	message.Message.Id = newId
 	s.messages.Store(newId, message)
-
-	ch, ok := s.condChannels.LoadAndDelete(newId)
-	if ok {
-		condChan := ch.(chan struct{})
-		close(condChan)
-	}
 
 	return nil
 }
@@ -63,11 +39,6 @@ func (s *subjectStore) GetMessage(id int) (messageWithDeadline, bool) {
 		return messageWithDeadline{}, ok
 	}
 	return m.(messageWithDeadline), ok
-}
-
-func (s *subjectStore) GetCondChannelOf(id int) chan struct{} {
-	ch, _ := s.condChannels.LoadOrStore(id, make(chan struct{}))
-	return ch.(chan struct{})
 }
 
 type inMemoryMessage struct {
@@ -108,52 +79,6 @@ func (i *inMemoryMessage) GetMessage(ctx context.Context, subject string, id int
 	}
 
 	return message.Message, nil
-}
-
-func (i *inMemoryMessage) GetNextMessage(ctx context.Context, subject string, previousId *int, beforeBlockCallBack func()) (*broker.Message, error) {
-	if beforeBlockCallBack == nil {
-		beforeBlockCallBack = func() {}
-	}
-	callBackCalled := false
-	defer func() {
-		if !callBackCalled {
-			beforeBlockCallBack()
-		}
-	}()
-
-	var id int
-	var err error
-	ss := i.getSubjectStore(subject)
-	if previousId == nil {
-		id = ss.idg.peekNextId()
-	} else {
-		id, err = ss.idg.nextOf(*previousId)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	message, ok := ss.GetMessage(id)
-	if ok {
-		return message.Message, nil
-	}
-
-	condChan := ss.GetCondChannelOf(id)
-
-	once := make(chan struct{}, 1)
-	once <- struct{}{}
-	for {
-		select {
-		case <-ctx.Done():
-			return nil, ctx.Err()
-		case <-condChan:
-			message, _ = ss.GetMessage(id)
-			return message.Message, nil
-		case <-once:
-			beforeBlockCallBack()
-			callBackCalled = true
-		}
-	}
 }
 
 func (i *inMemoryMessage) getSubjectStore(subject string) *subjectStore {
