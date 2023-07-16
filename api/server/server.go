@@ -26,10 +26,10 @@ func NewServer(bk broker.Broker) pb.BrokerServer {
 }
 
 func (s *server) Publish(ctx context.Context, request *pb.PublishRequest) (*pb.PublishResponse, error) {
-	body := string(request.Body)
-	id, err := s.broker.Publish(ctx, request.Subject, broker.Message{
+	body := string(request.GetBody())
+	id, err := s.broker.Publish(ctx, request.GetSubject(), broker.Message{
 		Body:       body,
-		Expiration: time.Duration(request.ExpirationSeconds) * time.Second,
+		Expiration: time.Duration(request.GetExpirationSeconds()) * time.Second,
 	})
 
 	if err == nil {
@@ -47,7 +47,7 @@ func (s *server) Publish(ctx context.Context, request *pb.PublishRequest) (*pb.P
 }
 
 func (s *server) Subscribe(request *pb.SubscribeRequest, subscribeServer pb.Broker_SubscribeServer) error {
-	sub, err := s.broker.Subscribe(subscribeServer.Context(), request.Subject)
+	sub, err := s.broker.Subscribe(subscribeServer.Context(), request.GetSubject())
 
 	if err == nil {
 		for message := range sub {
@@ -71,8 +71,8 @@ func (s *server) Subscribe(request *pb.SubscribeRequest, subscribeServer pb.Brok
 }
 
 func (s *server) Fetch(ctx context.Context, request *pb.FetchRequest) (*pb.MessageResponse, error) {
-	id := int(request.Id)
-	message, err := s.broker.Fetch(ctx, request.Subject, id)
+	id := int(request.GetId())
+	message, err := s.broker.Fetch(ctx, request.GetSubject(), id)
 	if err == nil {
 		return &pb.MessageResponse{
 			Body: []byte(message.Body),
