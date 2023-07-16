@@ -5,11 +5,7 @@ import (
 	"github.com/MeysamBavi/go-broker/pkg/broker"
 	"github.com/gocql/gocql"
 	"sync"
-)
-
-const (
-	messagesTable  = "messages_by_subject_and_id"
-	sequencesTable = "sequences"
+	"time"
 )
 
 type CassandraConfig struct {
@@ -50,22 +46,13 @@ func (c *cassandra) init() error {
 	ctx := context.Background()
 
 	if err := c.session.Query(
-		"CREATE KEYSPACE IF NOT EXISTS ? WITH replication = {'class': 'SimpleStrategy', 'replication_factor': '1'};",
-		c.config.Keyspace,
+		"CREATE TABLE IF NOT EXISTS messages_by_subject_and_id (subject text, id int, body text, expiration duration, PRIMARY KEY (subject, id));",
 	).WithContext(ctx).Exec(); err != nil {
 		return err
 	}
 
 	if err := c.session.Query(
-		"CREATE TABLE IF NOT EXISTS ? (subject text, id int, body text, expiration duration, PRIMARY KEY (subject, id));",
-		messagesTable,
-	).WithContext(ctx).Exec(); err != nil {
-		return err
-	}
-
-	if err := c.session.Query(
-		"CREATE TABLE IF NOT EXISTS ? (subject text PRIMARY KEY, currentId counter);",
-		sequencesTable,
+		"CREATE TABLE IF NOT EXISTS sequences (subject text PRIMARY KEY, currentId counter);",
 	).WithContext(ctx).Exec(); err != nil {
 		return err
 	}
@@ -78,8 +65,7 @@ func (c *cassandra) createNewId(ctx context.Context, subject string) (int32, err
 	defer c.locker.Unlock()
 
 	if err := c.session.Query(
-		"UPDATE ? SET currentId = currentId + 1 WHERE subject = ?;",
-		sequencesTable,
+		"UPDATE sequences SET currentId = currentId + 1 WHERE subject = ?;",
 		subject,
 	).WithContext(ctx).Exec(); err != nil {
 		return 0, err
@@ -87,8 +73,7 @@ func (c *cassandra) createNewId(ctx context.Context, subject string) (int32, err
 
 	var id int32
 	if err := c.session.Query(
-		"SELECT currentId FROM ? WHERE subject = ?;",
-		sequencesTable,
+		"SELECT currentId FROM sequences WHERE subject = ?;",
 		subject,
 	).WithContext(ctx).Scan(&id); err != nil {
 		return 0, err
@@ -104,13 +89,12 @@ func (c *cassandra) SaveMessage(ctx context.Context, subject string, message *br
 	}
 
 	if err := c.session.Query(
-		"INSERT INTO ? (subject, id, body, expiration) VALUES (?, ?, ?, ?) USING TTL ?;",
-		messagesTable,
+		"INSERT INTO messages_by_subject_and_id (subject, id, body, expiration) VALUES (?, ?, ?, ?) USING TTL ?;",
 		subject,
 		newId,
 		message.Body,
 		message.Expiration,
-		message.Expiration.Seconds(),
+		int(message.Expiration.Seconds()),
 	).WithContext(ctx).Exec(); err != nil {
 		return err
 	}
