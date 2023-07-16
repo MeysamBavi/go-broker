@@ -1,6 +1,8 @@
 package main
 
-import "github.com/MeysamBavi/go-broker/api/server"
+import (
+	"github.com/MeysamBavi/go-broker/internal/cmd"
+)
 
 // Main requirements:
 // 1. All tests should be passed
@@ -9,7 +11,5 @@ import "github.com/MeysamBavi/go-broker/api/server"
 // 	  for every base functionality ( publish, subscribe etc. )
 
 func main() {
-	server.Execute(server.Config{
-		Host: "localhost:50043",
-	})
+	cmd.Execute()
 }
