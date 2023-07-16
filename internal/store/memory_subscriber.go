@@ -31,8 +31,25 @@ func (i *inMemorySubscriber) Publish(subject string, message *broker.Message) {
 		return
 	}
 
+	var wg sync.WaitGroup
 	for element := l.Front(); element != nil; element = element.Next() {
 		callback := element.Value.(OnPublishFunc)
-		callback(message)
+		wg.Add(1)
+		go func() {
+			callback(message)
+			wg.Done()
+		}()
+	}
+
+	allDone := make(chan struct{})
+	go func() {
+		wg.Wait()
+		close(allDone)
+	}()
+	select {
+	case <-time.After(publishTimeout):
+		return
+	case <-allDone:
+		return
 	}
 }
