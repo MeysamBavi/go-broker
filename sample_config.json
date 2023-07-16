@@ -1,0 +1,8 @@
+{
+  "server": {
+    "host": "localhost:10020"
+  },
+  "store":{
+    "in_memory": true
+  }
+}
