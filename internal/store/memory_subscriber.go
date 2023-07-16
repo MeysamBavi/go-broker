@@ -3,36 +3,36 @@ package store
 import (
 	"container/list"
 	"github.com/MeysamBavi/go-broker/pkg/broker"
+	"sync"
+	"time"
+)
+
+const (
+	publishTimeout = time.Second
 )
 
 type inMemorySubscriber struct {
-	subscribers map[string]*list.List
+	subscribers sync.Map
 }
 
 func NewInMemorySubscriber() Subscriber {
-	return &inMemorySubscriber{
-		subscribers: make(map[string]*list.List),
-	}
+	return &inMemorySubscriber{}
 }
 
 func (i *inMemorySubscriber) AddSubscriber(subject string, callBack OnPublishFunc) {
-	l, ok := i.subscribers[subject]
-	if !ok {
-		l = list.New()
-		i.subscribers[subject] = l
-	}
-
-	l.PushBack(callBack)
+	l, _ := i.subscribers.LoadOrStore(subject, list.New())
+	l.(*list.List).PushBack(callBack)
 }
 
 func (i *inMemorySubscriber) Publish(subject string, message *broker.Message) {
-	l, ok := i.subscribers[subject]
+	l, ok := i.subscribers.Load(subject)
 	if !ok {
 		return
 	}
+	subscribers := l.(*list.List)
 
 	var wg sync.WaitGroup
-	for element := l.Front(); element != nil; element = element.Next() {
+	for element := subscribers.Front(); element != nil; element = element.Next() {
 		callback := element.Value.(OnPublishFunc)
 		wg.Add(1)
 		go func() {
