@@ -106,15 +106,16 @@ func (c *cassandra) SaveMessage(ctx context.Context, subject string, message *br
 
 func (c *cassandra) GetMessage(ctx context.Context, subject string, id int) (*broker.Message, error) {
 	var message broker.Message
+	var expiration gocql.Duration
 
 	if err := c.session.Query(
-		"SELECT id, body, expiration FROM ? WHERE subject=? AND id=?;",
-		messagesTable,
+		"SELECT id, body, expiration FROM messages_by_subject_and_id WHERE subject=? AND id=?;",
 		subject,
 		id,
-	).WithContext(ctx).Scan(&message.Id, &message.Body, &message.Expiration); err != nil {
+	).WithContext(ctx).Scan(&message.Id, &message.Body, &expiration); err != nil {
 		return nil, err
 	}
 
+	message.Expiration = time.Duration(expiration.Nanoseconds)
 	return &message, nil
 }
