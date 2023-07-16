@@ -8,6 +8,10 @@ import (
 	"time"
 )
 
+const (
+	subscribeChannelBuffer = 72
+)
+
 type Module struct {
 	msgStore    store.Message
 	subscribers store.Subscriber
@@ -52,7 +56,7 @@ func (m *Module) Subscribe(ctx context.Context, subject string) (<-chan broker.M
 		return nil, broker.ErrUnavailable
 	}
 
-	ch := make(chan broker.Message)
+	ch := make(chan broker.Message, subscribeChannelBuffer)
 	callback := func(msg *broker.Message) {
 		ch <- *msg
 	}
