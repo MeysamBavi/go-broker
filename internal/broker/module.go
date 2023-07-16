@@ -25,6 +25,12 @@ func NewModule() broker.Broker {
 	}
 }
 
+func NewModuleWithStore(message store.Message) broker.Broker {
+	return &Module{
+		msgStore:    message,
+		subscribers: store.NewInMemorySubscriber(),
+		closed:      false,
+	}
 }
 
 func (m *Module) Close() error {
