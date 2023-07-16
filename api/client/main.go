@@ -41,7 +41,7 @@ func main() {
 
 	resp, streamErr := messages.Recv()
 	for streamErr == nil {
-		log.Printf("\t\tgot message %q\n", resp.Body)
+		log.Printf("\t\tgot message %q\n", resp.GetBody())
 		resp, streamErr = messages.Recv()
 	}
 	if streamErr == io.EOF {
@@ -72,8 +72,8 @@ func publishMessages(client pb.BrokerClient, prefix string, count int, ids chan<
 			log.Println("could not publish: ", err)
 			return
 		}
-		log.Printf("published %q with id %d\n", body, resp.Id)
-		ids <- resp.Id
+		log.Printf("published %q with id %d\n", body, resp.GetId())
+		ids <- resp.GetId()
 		i++
 		time.Sleep(500 * time.Millisecond)
 	}
@@ -90,6 +90,6 @@ func fetchMessages(client pb.BrokerClient, ids <-chan int32) {
 			log.Printf("could not fetch id=%d: %v\n", id, err)
 			return
 		}
-		log.Printf("fetched %q with id %d\n", response.Body, id)
+		log.Printf("fetched %q with id %d\n", response.GetBody(), id)
 	}
 }
