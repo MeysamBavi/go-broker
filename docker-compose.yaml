@@ -1,0 +1,10 @@
+version: "3.8"
+services:
+  broker:
+    image: "go-broker"
+    build:
+      context: ./
+    ports:
+      - "50043:50043"
+    environment:
+      - GO_BROKER_SERVER__HOST=0.0.0.0:50043
