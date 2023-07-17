@@ -7,6 +7,7 @@ import (
 	"github.com/MeysamBavi/go-broker/internal/broker"
 	"github.com/MeysamBavi/go-broker/internal/config"
 	"github.com/MeysamBavi/go-broker/internal/store"
+	"github.com/MeysamBavi/go-broker/pkg/metrics"
 	"google.golang.org/grpc"
 	"log"
 	"net"
@@ -37,6 +38,10 @@ func Execute() {
 		if err != nil {
 			log.Fatal("could not connect to cassandra: ", err)
 		}
+	}
+
+	if cfg.Metrics.Enabled {
+		go metrics.RunServer(cfg.Metrics)
 	}
 
 	s := grpc.NewServer()
