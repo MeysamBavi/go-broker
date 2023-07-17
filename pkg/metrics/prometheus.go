@@ -27,7 +27,7 @@ func NewPrometheusHandler() Handler {
 			Name: "method_count",
 			Help: "number of failed/successful calls for each rpc endpoint",
 		}, []string{successLabel, methodLabel}),
-		methodDuration: prometheus.NewSummaryVec(prometheus.SummaryOpts{
+		methodDuration: promauto.NewSummaryVec(prometheus.SummaryOpts{
 			Name: "method_duration",
 			Help: "the method latency for each rpc endpoint in nanoseconds",
 			Objectives: map[float64]float64{
@@ -36,7 +36,7 @@ func NewPrometheusHandler() Handler {
 				.50: .01,
 			},
 		}, []string{methodLabel}),
-		activeSubscribers: prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		activeSubscribers: promauto.NewGaugeVec(prometheus.GaugeOpts{
 			Name: "active_subscribers",
 			Help: "number of active subscribers",
 		}, []string{}),
