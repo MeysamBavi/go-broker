@@ -120,6 +120,9 @@ func (c *cassandra) GetMessage(ctx context.Context, subject string, id int) (*br
 		subject,
 		id,
 	).WithContext(ctx).Scan(&message.Id, &message.Body, &expiration); err != nil {
+		if err == gocql.ErrNotFound {
+			return nil, ErrExpired
+		}
 		return nil, err
 	}
 
