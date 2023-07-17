@@ -3,6 +3,11 @@
     "host": "localhost:10020"
   },
   "store":{
-    "in_memory": true
+    "in_memory": false,
+    "use_cassandra": true,
+    "cassandra": {
+      "host": "localhost:9042",
+      "keyspace": "my_ks"
+    }
   }
 }

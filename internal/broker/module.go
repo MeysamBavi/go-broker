@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/MeysamBavi/go-broker/internal/store"
 	"github.com/MeysamBavi/go-broker/pkg/broker"
-	"time"
 )
 
 const (
@@ -20,16 +19,18 @@ type Module struct {
 
 func NewModule() broker.Broker {
 	return &Module{
-		msgStore:    store.NewInMemoryMessage(timeProvider{}),
+		msgStore:    store.NewInMemoryMessage(store.GetDefaultTimeProvider()),
 		subscribers: store.NewInMemorySubscriber(),
 		closed:      false,
 	}
 }
 
-type timeProvider struct{}
-
-func (tp timeProvider) GetCurrentTime() time.Time {
-	return time.Now()
+func NewModuleWithStore(message store.Message) broker.Broker {
+	return &Module{
+		msgStore:    message,
+		subscribers: store.NewInMemorySubscriber(),
+		closed:      false,
+	}
 }
 
 func (m *Module) Close() error {
