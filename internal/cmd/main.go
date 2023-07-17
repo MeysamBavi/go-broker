@@ -40,13 +40,17 @@ func Execute() {
 		}
 	}
 
+	var metricsHandler metrics.Handler
 	if cfg.Metrics.Enabled {
 		go metrics.RunServer(cfg.Metrics)
+		metricsHandler = metrics.NewPrometheusHandler()
+	} else {
+		metricsHandler = metrics.NewEmptyHandler()
 	}
 
 	s := grpc.NewServer()
 	module := broker.NewModuleWithStore(msgStore)
-	pb.RegisterBrokerServer(s, server.NewServer(module))
+	pb.RegisterBrokerServer(s, server.NewServer(module, metricsHandler, store.GetDefaultTimeProvider()))
 
 	log.Printf("server listening at %v\n", lis.Addr())
 	if err := s.Serve(lis); err != nil {

@@ -3,7 +3,9 @@ package server
 import (
 	"context"
 	pb "github.com/MeysamBavi/go-broker/api/proto"
+	"github.com/MeysamBavi/go-broker/internal/store"
 	"github.com/MeysamBavi/go-broker/pkg/broker"
+	"github.com/MeysamBavi/go-broker/pkg/metrics"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"time"
@@ -16,16 +18,28 @@ var (
 
 type server struct {
 	pb.UnimplementedBrokerServer
-	broker broker.Broker
+	broker         broker.Broker
+	metricsHandler metrics.Handler
+	timeProvider   store.TimeProvider
 }
 
-func NewServer(bk broker.Broker) pb.BrokerServer {
+func NewServer(bk broker.Broker, metricsHandler metrics.Handler, timeProvider store.TimeProvider) pb.BrokerServer {
 	return &server{
-		broker: bk,
+		broker:         bk,
+		metricsHandler: metricsHandler,
+		timeProvider:   timeProvider,
 	}
 }
 
 func (s *server) Publish(ctx context.Context, request *pb.PublishRequest) (*pb.PublishResponse, error) {
+	success := false
+	callTime := s.timeProvider.GetCurrentTime()
+	defer func() {
+		latency := s.timeProvider.GetCurrentTime().Sub(callTime)
+		s.metricsHandler.ReportPublishLatency(latency)
+		s.metricsHandler.IncPublishCallCount(success)
+	}()
+
 	body := string(request.GetBody())
 	id, err := s.broker.Publish(ctx, request.GetSubject(), broker.Message{
 		Body:       body,
@@ -33,6 +47,7 @@ func (s *server) Publish(ctx context.Context, request *pb.PublishRequest) (*pb.P
 	})
 
 	if err == nil {
+		success = true
 		return &pb.PublishResponse{
 			Id: int32(id),
 		}, nil
@@ -47,9 +62,17 @@ func (s *server) Publish(ctx context.Context, request *pb.PublishRequest) (*pb.P
 }
 
 func (s *server) Subscribe(request *pb.SubscribeRequest, subscribeServer pb.Broker_SubscribeServer) error {
+	success := false
+	defer func() {
+		s.metricsHandler.IncPublishCallCount(success)
+	}()
+
 	sub, err := s.broker.Subscribe(subscribeServer.Context(), request.GetSubject())
 
 	if err == nil {
+		s.metricsHandler.IncActiveSubscribers()
+		defer s.metricsHandler.DecActiveSubscribers()
+
 		for message := range sub {
 			err := subscribeServer.Send(&pb.MessageResponse{
 				Body: []byte(message.Body),
@@ -59,6 +82,8 @@ func (s *server) Subscribe(request *pb.SubscribeRequest, subscribeServer pb.Brok
 				return status.Errorf(codes.Internal, "could not send message: %v", err)
 			}
 		}
+
+		success = true
 		return nil
 	}
 
@@ -71,9 +96,18 @@ func (s *server) Subscribe(request *pb.SubscribeRequest, subscribeServer pb.Brok
 }
 
 func (s *server) Fetch(ctx context.Context, request *pb.FetchRequest) (*pb.MessageResponse, error) {
+	success := false
+	callTime := s.timeProvider.GetCurrentTime()
+	defer func() {
+		latency := s.timeProvider.GetCurrentTime().Sub(callTime)
+		s.metricsHandler.ReportFetchLatency(latency)
+		s.metricsHandler.IncFetchCallCount(success)
+	}()
+
 	id := int(request.GetId())
 	message, err := s.broker.Fetch(ctx, request.GetSubject(), id)
 	if err == nil {
+		success = true
 		return &pb.MessageResponse{
 			Body: []byte(message.Body),
 		}, nil
