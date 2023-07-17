@@ -42,8 +42,8 @@ func Execute() {
 
 	var metricsHandler metrics.Handler
 	if cfg.Metrics.Enabled {
-		go metrics.RunServer(cfg.Metrics)
 		metricsHandler = metrics.NewPrometheusHandler()
+		go metrics.RunServer(cfg.Metrics)
 	} else {
 		metricsHandler = metrics.NewEmptyHandler()
 	}

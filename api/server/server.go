@@ -64,7 +64,7 @@ func (s *server) Publish(ctx context.Context, request *pb.PublishRequest) (*pb.P
 func (s *server) Subscribe(request *pb.SubscribeRequest, subscribeServer pb.Broker_SubscribeServer) error {
 	success := false
 	defer func() {
-		s.metricsHandler.IncPublishCallCount(success)
+		s.metricsHandler.IncSubscribeCallCount(success)
 	}()
 
 	sub, err := s.broker.Subscribe(subscribeServer.Context(), request.GetSubject())
