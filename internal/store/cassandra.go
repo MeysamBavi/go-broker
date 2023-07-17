@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/MeysamBavi/go-broker/pkg/broker"
 	"github.com/gocql/gocql"
+	"math"
 	"sync"
 	"time"
 )
@@ -88,13 +89,19 @@ func (c *cassandra) SaveMessage(ctx context.Context, subject string, message *br
 		return err
 	}
 
+	expirationSeconds := int(math.Round(message.Expiration.Seconds()))
+	if expirationSeconds <= 0 {
+		message.Id = int(newId)
+		return nil
+	}
+
 	if err := c.session.Query(
 		"INSERT INTO messages_by_subject_and_id (subject, id, body, expiration) VALUES (?, ?, ?, ?) USING TTL ?;",
 		subject,
 		newId,
 		message.Body,
 		message.Expiration,
-		int(message.Expiration.Seconds()),
+		expirationSeconds,
 	).WithContext(ctx).Exec(); err != nil {
 		return err
 	}
