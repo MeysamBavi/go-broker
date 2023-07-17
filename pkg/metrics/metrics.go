@@ -1,12 +1,14 @@
 package metrics
 
+import "time"
+
 type Handler interface {
 	IncPublishCallCount(success bool)
 	IncSubscribeCallCount(success bool)
 	IncFetchCallCount(success bool)
-	ReportPublishLatency(value float64)
-	ReportSubscribeLatency(value float64)
-	ReportFetchLatency(value float64)
+	ReportPublishLatency(value time.Duration)
+	ReportSubscribeLatency(value time.Duration)
+	ReportFetchLatency(value time.Duration)
 	IncActiveSubscribers()
 	DecActiveSubscribers()
 }
@@ -23,11 +25,11 @@ func (n noImpl) IncSubscribeCallCount(_ bool) {}
 
 func (n noImpl) IncFetchCallCount(_ bool) {}
 
-func (n noImpl) ReportPublishLatency(_ float64) {}
+func (n noImpl) ReportPublishLatency(_ time.Duration) {}
 
-func (n noImpl) ReportSubscribeLatency(_ float64) {}
+func (n noImpl) ReportSubscribeLatency(_ time.Duration) {}
 
-func (n noImpl) ReportFetchLatency(_ float64) {}
+func (n noImpl) ReportFetchLatency(_ time.Duration) {}
 
 func (n noImpl) IncActiveSubscribers() {}
 

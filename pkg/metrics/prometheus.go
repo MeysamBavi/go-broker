@@ -4,6 +4,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"strconv"
+	"time"
 )
 
 const (
@@ -43,10 +44,10 @@ func (p *prometheusImpl) incMethodCount(method string, success bool) {
 		Inc()
 }
 
-func (p *prometheusImpl) reportMethodLatency(method string, latency float64) {
+func (p *prometheusImpl) reportMethodLatency(method string, latency time.Duration) {
 	p.methodDuration.
 		With(prometheus.Labels{methodLabel: method}).
-		Observe(latency)
+		Observe(float64(latency.Milliseconds()))
 }
 
 func (p *prometheusImpl) IncPublishCallCount(success bool) {
@@ -61,15 +62,15 @@ func (p *prometheusImpl) IncFetchCallCount(success bool) {
 	p.incMethodCount(fetch, success)
 }
 
-func (p *prometheusImpl) ReportPublishLatency(value float64) {
+func (p *prometheusImpl) ReportPublishLatency(value time.Duration) {
 	p.reportMethodLatency(publish, value)
 }
 
-func (p *prometheusImpl) ReportSubscribeLatency(value float64) {
+func (p *prometheusImpl) ReportSubscribeLatency(value time.Duration) {
 	p.reportMethodLatency(subscribe, value)
 }
 
-func (p *prometheusImpl) ReportFetchLatency(value float64) {
+func (p *prometheusImpl) ReportFetchLatency(value time.Duration) {
 	p.reportMethodLatency(fetch, value)
 }
 
