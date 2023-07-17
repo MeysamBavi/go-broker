@@ -2,8 +2,10 @@ package store
 
 import (
 	"context"
+	"fmt"
 	"github.com/MeysamBavi/go-broker/pkg/broker"
 	"github.com/gocql/gocql"
+	"log"
 	"math"
 	"sync"
 	"time"
@@ -21,6 +23,21 @@ type cassandra struct {
 }
 
 func NewCassandra(config CassandraConfig) (Message, error) {
+	{
+		cluster := gocql.NewCluster(config.Host)
+		session, err := cluster.CreateSession()
+		if err != nil {
+			return nil, err
+		}
+		createKeyspaceStatement :=
+			fmt.Sprintf("CREATE KEYSPACE IF NOT EXISTS %s WITH replication = {'class': 'SimpleStrategy', 'replication_factor': '1'};", config.Keyspace)
+		if err := session.Query(createKeyspaceStatement).Exec(); err != nil {
+			return nil, err
+		}
+
+		log.Printf("keyspace %q created\n", config.Keyspace)
+	}
+
 	cluster := gocql.NewCluster(config.Host)
 	cluster.Consistency = gocql.All
 	cluster.Keyspace = config.Keyspace
