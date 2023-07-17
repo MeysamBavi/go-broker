@@ -30,6 +30,11 @@ func NewPrometheusHandler() Handler {
 		methodDuration: prometheus.NewSummaryVec(prometheus.SummaryOpts{
 			Name: "method_duration",
 			Help: "the method latency for each rpc endpoint in milliseconds",
+			Objectives: map[float64]float64{
+				.99: .01,
+				.95: .01,
+				.50: .01,
+			},
 		}, []string{methodLabel}),
 		activeSubscribers: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Name: "active_subscribers",
