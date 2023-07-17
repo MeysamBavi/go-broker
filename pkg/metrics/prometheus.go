@@ -66,10 +66,6 @@ func (p *prometheusImpl) ReportPublishLatency(value time.Duration) {
 	p.reportMethodLatency(publish, value)
 }
 
-func (p *prometheusImpl) ReportSubscribeLatency(value time.Duration) {
-	p.reportMethodLatency(subscribe, value)
-}
-
 func (p *prometheusImpl) ReportFetchLatency(value time.Duration) {
 	p.reportMethodLatency(fetch, value)
 }
