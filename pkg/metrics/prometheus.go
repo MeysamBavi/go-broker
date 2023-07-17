@@ -29,7 +29,7 @@ func NewPrometheusHandler() Handler {
 		}, []string{successLabel, methodLabel}),
 		methodDuration: prometheus.NewSummaryVec(prometheus.SummaryOpts{
 			Name: "method_duration",
-			Help: "the method latency for each rpc endpoint in milliseconds",
+			Help: "the method latency for each rpc endpoint in nanoseconds",
 			Objectives: map[float64]float64{
 				.99: .01,
 				.95: .01,
@@ -52,7 +52,7 @@ func (p *prometheusImpl) incMethodCount(method string, success bool) {
 func (p *prometheusImpl) reportMethodLatency(method string, latency time.Duration) {
 	p.methodDuration.
 		With(prometheus.Labels{methodLabel: method}).
-		Observe(float64(latency.Milliseconds()))
+		Observe(float64(latency.Nanoseconds()))
 }
 
 func (p *prometheusImpl) IncPublishCallCount(success bool) {
