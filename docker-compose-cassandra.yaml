@@ -1,0 +1,31 @@
+version: "3.8"
+services:
+  broker:
+    image: "go-broker"
+    build:
+      context: ./
+    ports:
+      - "50043:50043"
+    depends_on:
+      cassandra:
+        condition: service_healthy
+    environment:
+      - GO_BROKER_SERVER__HOST=0.0.0.0:50043
+      - GO_BROKER_STORE__IN_MEMORY=false
+      - GO_BROKER_STORE__USE_CASSANDRA=true
+      - GO_BROKER_STORE__CASSANDRA__HOST=cassandra:9042
+      - GO_BROKER_STORE__CASSANDRA__KEYSPACE=go_broker
+
+  cassandra:
+    image: cassandra:4.1
+    volumes:
+      - db:/var/lib/cassandra
+    healthcheck:
+      test: ["CMD", "cqlsh", "-e", "describe keyspaces ;"]
+      interval: 10s
+      retries: 5
+      timeout: 5s
+      start_period: 1m5s
+
+volumes:
+  db:
