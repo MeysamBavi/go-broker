@@ -6,5 +6,15 @@ services:
       context: ./
     ports:
       - "50043:50043"
+      - "2112:2112"
     environment:
       - GO_BROKER_SERVER__HOST=0.0.0.0:50043
+
+  metrics:
+    image: prom/prometheus:v2.45.0
+    ports:
+      - "9090:9090"
+    volumes:
+      - "./prometheus.yml:/etc/prometheus/prometheus.yml"
+    depends_on:
+      - broker
