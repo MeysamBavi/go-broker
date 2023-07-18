@@ -6,5 +6,28 @@ services:
       context: ./
     ports:
       - "50043:50043"
+      - "2112:2112"
     environment:
       - GO_BROKER_SERVER__HOST=0.0.0.0:50043
+
+  metrics:
+    image: prom/prometheus:v2.45.0
+    ports:
+      - "9090:9090"
+    volumes:
+      - "./prometheus.yml:/etc/prometheus/prometheus.yml"
+    depends_on:
+      - broker
+
+  grafana:
+    image: grafana/grafana-enterprise:10.0.2
+    restart: unless-stopped
+    ports:
+      - '3000:3000'
+    volumes:
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - metrics
+
+volumes:
+  grafana_data:

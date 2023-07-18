@@ -4,12 +4,14 @@ import (
 	"fmt"
 	"github.com/MeysamBavi/go-broker/api/server"
 	"github.com/MeysamBavi/go-broker/internal/store"
+	"github.com/MeysamBavi/go-broker/pkg/metrics"
 	"strings"
 )
 
 type Config struct {
-	Server server.Config `config:"server"`
-	Store  store.Config  `config:"store"`
+	Server  server.Config  `config:"server"`
+	Store   store.Config   `config:"store"`
+	Metrics metrics.Config `config:"metrics"`
 }
 
 func (c *Config) Validate() error {
@@ -45,6 +47,10 @@ func Default() Config {
 				Host:     "localhost:9042",
 				Keyspace: "go_broker",
 			},
+		},
+		Metrics: metrics.Config{
+			Enabled:  true,
+			HttpPort: "2112",
 		},
 	}
 }

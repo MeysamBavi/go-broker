@@ -7,6 +7,7 @@ import (
 	"github.com/MeysamBavi/go-broker/internal/broker"
 	"github.com/MeysamBavi/go-broker/internal/config"
 	"github.com/MeysamBavi/go-broker/internal/store"
+	"github.com/MeysamBavi/go-broker/pkg/metrics"
 	"google.golang.org/grpc"
 	"log"
 	"net"
@@ -39,9 +40,17 @@ func Execute() {
 		}
 	}
 
+	var metricsHandler metrics.Handler
+	if cfg.Metrics.Enabled {
+		metricsHandler = metrics.NewPrometheusHandler()
+		go metrics.RunServer(cfg.Metrics)
+	} else {
+		metricsHandler = metrics.NewEmptyHandler()
+	}
+
 	s := grpc.NewServer()
 	module := broker.NewModuleWithStore(msgStore)
-	pb.RegisterBrokerServer(s, server.NewServer(module))
+	pb.RegisterBrokerServer(s, server.NewServer(module, metricsHandler, store.GetDefaultTimeProvider()))
 
 	log.Printf("server listening at %v\n", lis.Addr())
 	if err := s.Serve(lis); err != nil {
