@@ -62,18 +62,42 @@ func (s *server) Publish(ctx context.Context, request *pb.PublishRequest) (*pb.P
 }
 
 func (s *server) Subscribe(request *pb.SubscribeRequest, subscribeServer pb.Broker_SubscribeServer) error {
+	// call count is incremented when the first response is generated;
+	// if first response is a published message, or the context expires before first message, the call is successful
+	// otherwise it is a failure
 	success := false
-	defer func() {
-		s.metricsHandler.IncSubscribeCallCount(success)
-	}()
+	alreadyReported := false
+	report := func() {
+		if !alreadyReported {
+			alreadyReported = true
+			s.metricsHandler.IncSubscribeCallCount(success)
+		}
+	}
+	defer report()
 
 	sub, err := s.broker.Subscribe(subscribeServer.Context(), request.GetSubject())
 
-	if err == nil {
-		s.metricsHandler.IncActiveSubscribers()
-		defer s.metricsHandler.DecActiveSubscribers()
+	if err != nil {
+		if err == broker.ErrUnavailable {
+			return errUnavailable
+		}
+		//TODO: log error
+		return errInternal
+	}
 
-		for message := range sub {
+	s.metricsHandler.IncActiveSubscribers()
+	defer s.metricsHandler.DecActiveSubscribers()
+
+	for {
+		select {
+		case <-subscribeServer.Context().Done():
+			success = true
+			return nil
+		case message, ok := <-sub:
+			if !ok {
+				//TODO: log error
+				return status.Errorf(codes.Internal, "channel closed unexpectedly")
+			}
 			err := subscribeServer.Send(&pb.MessageResponse{
 				Body: []byte(message.Body),
 			})
@@ -81,18 +105,10 @@ func (s *server) Subscribe(request *pb.SubscribeRequest, subscribeServer pb.Brok
 				//TODO: log error
 				return status.Errorf(codes.Internal, "could not send message: %v", err)
 			}
+			success = true
+			report()
 		}
-
-		success = true
-		return nil
 	}
-
-	if err == broker.ErrUnavailable {
-		return errUnavailable
-	}
-
-	//TODO: log error
-	return errInternal
 }
 
 func (s *server) Fetch(ctx context.Context, request *pb.FetchRequest) (*pb.MessageResponse, error) {
