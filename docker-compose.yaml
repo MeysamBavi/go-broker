@@ -18,3 +18,16 @@ services:
       - "./prometheus.yml:/etc/prometheus/prometheus.yml"
     depends_on:
       - broker
+
+  grafana:
+    image: grafana/grafana-enterprise:10.0.2
+    restart: unless-stopped
+    ports:
+      - '3000:3000'
+    volumes:
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - metrics
+
+volumes:
+  grafana_data:
