@@ -10,6 +10,11 @@ import (
 	"io"
 	"log"
 	"os"
+	"time"
+)
+
+const (
+	shutdownTimeout = time.Second * 4
 )
 
 func NewTracerProvider(config Config) (tp trace.TracerProvider, shutdown func()) {
@@ -36,7 +41,8 @@ func NewTracerProvider(config Config) (tp trace.TracerProvider, shutdown func())
 		traceSdk.WithResource(GetResource()),
 	)
 	shutdown = func() {
-		ctx := context.Background()
+		ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
+		defer cancel()
 		tpp.ForceFlush(ctx)
 		if err := tpp.Shutdown(ctx); err != nil {
 			log.Fatal(err)
