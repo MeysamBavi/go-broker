@@ -7,7 +7,9 @@ import (
 	"github.com/MeysamBavi/go-broker/internal/broker"
 	"github.com/MeysamBavi/go-broker/internal/config"
 	"github.com/MeysamBavi/go-broker/internal/store"
+	"github.com/MeysamBavi/go-broker/internal/tracing"
 	"github.com/MeysamBavi/go-broker/pkg/metrics"
+	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"google.golang.org/grpc"
 	"log"
 	"net"
@@ -29,6 +31,9 @@ func Execute() {
 		log.Fatal("could not listen: ", err)
 	}
 
+	tracerProvider, shutdown := tracing.NewTracerProvider(cfg.Tracing)
+	defer shutdown()
+
 	var msgStore store.Message
 	switch {
 	case cfg.Store.UseInMemory:
@@ -39,6 +44,7 @@ func Execute() {
 			log.Fatal("could not connect to cassandra: ", err)
 		}
 	}
+	msgStore = store.MessageWithTracing(msgStore, tracerProvider)
 
 	var metricsHandler metrics.Handler
 	if cfg.Metrics.Enabled {
@@ -48,7 +54,10 @@ func Execute() {
 		metricsHandler = metrics.NewEmptyHandler()
 	}
 
-	s := grpc.NewServer()
+	s := grpc.NewServer(
+		grpc.UnaryInterceptor(otelgrpc.UnaryServerInterceptor(otelgrpc.WithTracerProvider(tracerProvider))),
+		grpc.StreamInterceptor(otelgrpc.StreamServerInterceptor(otelgrpc.WithTracerProvider(tracerProvider))),
+	)
 	module := broker.NewModuleWithStore(msgStore)
 	pb.RegisterBrokerServer(s, server.NewServer(module, metricsHandler, store.GetDefaultTimeProvider()))
 

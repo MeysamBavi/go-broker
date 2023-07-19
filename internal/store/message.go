@@ -3,8 +3,14 @@ package store
 import (
 	"context"
 	"errors"
+	"github.com/MeysamBavi/go-broker/internal/tracing"
 	"github.com/MeysamBavi/go-broker/pkg/broker"
+	"go.opentelemetry.io/otel/trace"
 	"time"
+)
+
+const (
+	tracerName = "store"
 )
 
 type Message interface {
@@ -29,4 +35,45 @@ func GetDefaultTimeProvider() TimeProvider {
 
 func (tp timeProvider) GetCurrentTime() time.Time {
 	return time.Now()
+}
+
+type withTracing struct {
+	core           Message
+	tracerProvider trace.TracerProvider
+}
+
+func MessageWithTracing(coreMessage Message, provider trace.TracerProvider) Message {
+	return &withTracing{
+		core:           coreMessage,
+		tracerProvider: provider,
+	}
+}
+
+func (w *withTracing) SaveMessage(ctx context.Context, subject string, message *broker.Message) error {
+	ctx, span := w.tracerProvider.Tracer(tracerName).Start(ctx, "SaveMessage")
+	defer span.End()
+
+	span.SetAttributes(tracing.Subject(subject))
+
+	err := w.core.SaveMessage(ctx, subject, message)
+
+	span.SetAttributes(tracing.MessageAssignedId(message.Id))
+
+	tracing.SetStatusAndError(span, err)
+
+	return err
+}
+
+func (w *withTracing) GetMessage(ctx context.Context, subject string, id int) (*broker.Message, error) {
+	ctx, span := w.tracerProvider.Tracer(tracerName).Start(ctx, "GetMessage")
+	defer span.End()
+
+	span.SetAttributes(tracing.Subject(subject))
+	span.SetAttributes(tracing.MessageId(id))
+
+	m, err := w.core.GetMessage(ctx, subject, id)
+
+	tracing.SetStatusAndError(span, err)
+
+	return m, err
 }

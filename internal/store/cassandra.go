@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"github.com/MeysamBavi/go-broker/pkg/broker"
 	"github.com/gocql/gocql"
+	"go.opentelemetry.io/contrib/instrumentation/github.com/gocql/gocql/otelgocql"
+	"go.opentelemetry.io/otel/trace"
 	"log"
 	"math"
 	"sync"
@@ -22,10 +24,11 @@ type cassandra struct {
 	locker  sync.Mutex
 }
 
-func NewCassandra(config CassandraConfig) (Message, error) {
+func NewCassandra(config CassandraConfig, tracerProvider trace.TracerProvider) (Message, error) {
+	ctx := context.Background()
 	{
 		cluster := gocql.NewCluster(config.Host)
-		session, err := cluster.CreateSession()
+		session, err := otelgocql.NewSessionWithTracing(ctx, cluster, otelgocql.WithTracerProvider(tracerProvider))
 		if err != nil {
 			return nil, err
 		}
@@ -36,13 +39,14 @@ func NewCassandra(config CassandraConfig) (Message, error) {
 		}
 
 		log.Printf("keyspace %q created\n", config.Keyspace)
+		session.Close()
 	}
 
 	cluster := gocql.NewCluster(config.Host)
 	cluster.Consistency = gocql.All
 	cluster.Keyspace = config.Keyspace
 
-	session, err := cluster.CreateSession()
+	session, err := otelgocql.NewSessionWithTracing(ctx, cluster, otelgocql.WithTracerProvider(tracerProvider))
 	if err != nil {
 		return nil, err
 	}
