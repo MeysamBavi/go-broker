@@ -9,6 +9,9 @@ services:
       - "2112:2112"
     environment:
       - GO_BROKER_SERVER__HOST=0.0.0.0:50043
+      - GO_BROKER_TRACING__USE_JAEGER=true
+      - GO_BROKER_TRACING__JAEGER_AGENT_HOST=jaeger
+      - GO_BROKER_TRACING__JAEGER_AGENT_PORT=6831
 
   metrics:
     image: prom/prometheus:v2.45.0
@@ -28,6 +31,11 @@ services:
       - grafana_data:/var/lib/grafana
     depends_on:
       - metrics
+
+  jaeger:
+    image: jaegertracing/all-in-one
+    ports:
+      - "16686:16686"
 
 volumes:
   grafana_data:
