@@ -16,9 +16,7 @@ func SetStatusAndError(span trace.Span, err error) {
 	span.RecordError(err)
 	if err != nil {
 		span.SetStatus(codes.Error, err.Error())
-		return
 	}
-	span.SetStatus(codes.Ok, "ok")
 }
 
 func Subject(val string) attribute.KeyValue {
