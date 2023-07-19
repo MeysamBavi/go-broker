@@ -55,11 +55,12 @@ func Default() Config {
 			HttpPort: "2112",
 		},
 		Tracing: tracing.Config{
-			Enabled:         true,
-			UseJaeger:       false,
-			OutputFile:      "./traces.json",
-			JaegerAgentHost: "localhost",
-			JaegerAgentPort: "6831",
+			Enabled:          true,
+			UseJaeger:        false,
+			OutputFile:       "./traces.json",
+			JaegerAgentHost:  "localhost",
+			JaegerAgentPort:  "6831",
+			SamplingFraction: 1,
 		},
 	}
 }

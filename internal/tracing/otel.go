@@ -44,6 +44,7 @@ func NewTracerProvider(config Config) (tp trace.TracerProvider, shutdown func())
 	tpp := traceSdk.NewTracerProvider(
 		traceSdk.WithBatcher(exporter),
 		traceSdk.WithResource(GetResource()),
+		traceSdk.WithSampler(traceSdk.ParentBased(traceSdk.TraceIDRatioBased(config.SamplingFraction))),
 	)
 	shutdown = func() {
 		ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
