@@ -2,6 +2,7 @@ package store
 
 import (
 	"container/list"
+	"context"
 	"github.com/MeysamBavi/go-broker/pkg/broker"
 	"sync"
 	"time"
@@ -19,12 +20,12 @@ func NewInMemorySubscriber() Subscriber {
 	return &inMemorySubscriber{}
 }
 
-func (i *inMemorySubscriber) AddSubscriber(subject string, callBack OnPublishFunc) {
+func (i *inMemorySubscriber) AddSubscriber(_ context.Context, subject string, callBack OnPublishFunc) {
 	l, _ := i.subscribers.LoadOrStore(subject, list.New())
 	l.(*list.List).PushBack(callBack)
 }
 
-func (i *inMemorySubscriber) Publish(subject string, message *broker.Message) {
+func (i *inMemorySubscriber) Publish(_ context.Context, subject string, message *broker.Message) {
 	l, ok := i.subscribers.Load(subject)
 	if !ok {
 		return
