@@ -39,12 +39,15 @@ func Execute() {
 	case cfg.Store.UseInMemory:
 		msgStore = store.NewInMemoryMessage(store.GetDefaultTimeProvider())
 	case cfg.Store.UseCassandra:
-		msgStore, err = store.NewCassandra(cfg.Store.Cassandra)
+		msgStore, err = store.NewCassandra(cfg.Store.Cassandra, tracerProvider)
 		if err != nil {
 			log.Fatal("could not connect to cassandra: ", err)
 		}
 	}
 	msgStore = store.MessageWithTracing(msgStore, tracerProvider)
+
+	subsStore := store.NewInMemorySubscriber()
+	subsStore = store.SubscriberWithTracing(subsStore, tracerProvider)
 
 	var metricsHandler metrics.Handler
 	if cfg.Metrics.Enabled {
@@ -58,7 +61,7 @@ func Execute() {
 		grpc.UnaryInterceptor(otelgrpc.UnaryServerInterceptor(otelgrpc.WithTracerProvider(tracerProvider))),
 		grpc.StreamInterceptor(otelgrpc.StreamServerInterceptor(otelgrpc.WithTracerProvider(tracerProvider))),
 	)
-	module := broker.NewModuleWithStore(msgStore)
+	module := broker.NewModuleWithStores(msgStore, subsStore)
 	pb.RegisterBrokerServer(s, server.NewServer(module, metricsHandler, store.GetDefaultTimeProvider()))
 
 	log.Printf("server listening at %v\n", lis.Addr())

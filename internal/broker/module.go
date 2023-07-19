@@ -25,10 +25,10 @@ func NewModule() broker.Broker {
 	}
 }
 
-func NewModuleWithStore(message store.Message) broker.Broker {
+func NewModuleWithStores(message store.Message, subscriber store.Subscriber) broker.Broker {
 	return &Module{
 		msgStore:    message,
-		subscribers: store.NewInMemorySubscriber(),
+		subscribers: subscriber,
 		closed:      false,
 	}
 }
@@ -47,7 +47,7 @@ func (m *Module) Publish(ctx context.Context, subject string, msg broker.Message
 	if err != nil {
 		return 0, fmt.Errorf("unexpected error while saving message: %w", err)
 	}
-	m.subscribers.Publish(subject, &msg)
+	m.subscribers.Publish(ctx, subject, &msg)
 
 	return msg.Id, nil
 }
@@ -61,7 +61,7 @@ func (m *Module) Subscribe(ctx context.Context, subject string) (<-chan broker.M
 	callback := func(msg *broker.Message) {
 		ch <- *msg
 	}
-	m.subscribers.AddSubscriber(subject, callback)
+	m.subscribers.AddSubscriber(ctx, subject, callback)
 
 	return ch, nil
 }
