@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	tracerName = "store"
+	packageName = "/internal/store"
 )
 
 type Message interface {
@@ -49,8 +49,12 @@ func MessageWithTracing(coreMessage Message, provider trace.TracerProvider) Mess
 	}
 }
 
+func (w *withTracing) tracer() trace.Tracer {
+	return w.tracerProvider.Tracer(packageName + ".Message")
+}
+
 func (w *withTracing) SaveMessage(ctx context.Context, subject string, message *broker.Message) error {
-	ctx, span := w.tracerProvider.Tracer(tracerName).Start(ctx, "SaveMessage")
+	ctx, span := w.tracer().Start(ctx, "SaveMessage")
 	defer span.End()
 
 	span.SetAttributes(tracing.Subject(subject))
@@ -65,7 +69,7 @@ func (w *withTracing) SaveMessage(ctx context.Context, subject string, message *
 }
 
 func (w *withTracing) GetMessage(ctx context.Context, subject string, id int) (*broker.Message, error) {
-	ctx, span := w.tracerProvider.Tracer(tracerName).Start(ctx, "GetMessage")
+	ctx, span := w.tracer().Start(ctx, "GetMessage")
 	defer span.End()
 
 	span.SetAttributes(tracing.Subject(subject))

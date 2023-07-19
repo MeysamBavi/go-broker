@@ -26,8 +26,12 @@ func SubscriberWithTracing(core Subscriber, tracerProvider trace.TracerProvider)
 	}
 }
 
+func (s *subscriberWithTracing) tracer() trace.Tracer {
+	return s.tracerProvider.Tracer(packageName + ".Subscriber")
+}
+
 func (s *subscriberWithTracing) AddSubscriber(ctx context.Context, subject string, callBack OnPublishFunc) {
-	ctx, span := s.tracerProvider.Tracer(tracerName).Start(ctx, "AddSubscriber")
+	ctx, span := s.tracer().Start(ctx, "AddSubscriber")
 	defer span.End()
 
 	span.SetAttributes(tracing.Subject(subject))
@@ -36,7 +40,7 @@ func (s *subscriberWithTracing) AddSubscriber(ctx context.Context, subject strin
 }
 
 func (s *subscriberWithTracing) Publish(ctx context.Context, subject string, message *broker.Message) {
-	ctx, span := s.tracerProvider.Tracer(tracerName).Start(ctx, "Publish")
+	ctx, span := s.tracer().Start(ctx, "Publish")
 	defer span.End()
 
 	span.SetAttributes(tracing.Subject(subject))

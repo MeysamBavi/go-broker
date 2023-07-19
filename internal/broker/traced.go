@@ -8,7 +8,7 @@ import (
 )
 
 const (
-	tracerName = "broker"
+	packageName = "/internal/broker"
 )
 
 func WithTracing(core broker.Broker, provider trace.TracerProvider) broker.Broker {
@@ -23,12 +23,16 @@ type withTracing struct {
 	core broker.Broker
 }
 
+func (w *withTracing) tracer() trace.Tracer {
+	return w.Tracer(packageName + ".Module")
+}
+
 func (w *withTracing) Close() error {
 	return w.core.Close()
 }
 
 func (w *withTracing) Publish(ctx context.Context, subject string, msg broker.Message) (int, error) {
-	ctx, span := w.Tracer(tracerName).Start(ctx, "Publish")
+	ctx, span := w.tracer().Start(ctx, "Publish")
 	defer span.End()
 
 	span.SetAttributes(tracing.Subject(subject))
@@ -41,7 +45,7 @@ func (w *withTracing) Publish(ctx context.Context, subject string, msg broker.Me
 }
 
 func (w *withTracing) Subscribe(ctx context.Context, subject string) (<-chan broker.Message, error) {
-	ctx, span := w.Tracer(tracerName).Start(ctx, "Subscribe")
+	ctx, span := w.tracer().Start(ctx, "Subscribe")
 	defer span.End()
 
 	span.SetAttributes(tracing.Subject(subject))
@@ -54,7 +58,7 @@ func (w *withTracing) Subscribe(ctx context.Context, subject string) (<-chan bro
 }
 
 func (w *withTracing) Fetch(ctx context.Context, subject string, id int) (broker.Message, error) {
-	ctx, span := w.Tracer(tracerName).Start(ctx, "Fetch")
+	ctx, span := w.tracer().Start(ctx, "Fetch")
 	defer span.End()
 
 	span.SetAttributes(tracing.Subject(subject))
