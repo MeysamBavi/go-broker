@@ -62,6 +62,7 @@ func Execute() {
 		grpc.StreamInterceptor(otelgrpc.StreamServerInterceptor(otelgrpc.WithTracerProvider(tracerProvider))),
 	)
 	module := broker.NewModuleWithStores(msgStore, subsStore)
+	module = broker.WithTracing(module, tracerProvider)
 	pb.RegisterBrokerServer(s, server.NewServer(module, metricsHandler, store.GetDefaultTimeProvider()))
 
 	log.Printf("server listening at %v\n", lis.Addr())
