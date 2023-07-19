@@ -2,6 +2,7 @@ package tracing
 
 import (
 	"context"
+	"go.opentelemetry.io/otel/exporters/jaeger"
 	"go.opentelemetry.io/otel/exporters/stdout/stdouttrace"
 	"go.opentelemetry.io/otel/sdk/resource"
 	traceSdk "go.opentelemetry.io/otel/sdk/trace"
@@ -24,7 +25,11 @@ func NewTracerProvider(config Config) (tp trace.TracerProvider, shutdown func())
 
 	var exporter traceSdk.SpanExporter
 	if config.UseJaeger {
-		//TODO use jaeger exporter
+		exp, err := newJaegerExporter(config)
+		if err != nil {
+			log.Fatal(err)
+		}
+		exporter = exp
 	} else {
 		file, err := os.Create(config.OutputFile)
 		if err != nil {
@@ -74,4 +79,11 @@ func newStdoutExporter(w io.Writer) (traceSdk.SpanExporter, error) {
 		stdouttrace.WithPrettyPrint(),
 		stdouttrace.WithoutTimestamps(),
 	)
+}
+
+func newJaegerExporter(config Config) (*jaeger.Exporter, error) {
+	return jaeger.New(jaeger.WithAgentEndpoint(
+		jaeger.WithAgentHost(config.JaegerAgentHost),
+		jaeger.WithAgentPort(config.JaegerAgentPort),
+	))
 }
