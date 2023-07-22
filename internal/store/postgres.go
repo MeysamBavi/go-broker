@@ -4,8 +4,11 @@ import (
 	"context"
 	"fmt"
 	"github.com/MeysamBavi/go-broker/pkg/broker"
+	"go.opentelemetry.io/otel/trace"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
+	"strings"
 	"time"
 )
 
@@ -18,15 +21,48 @@ type PostgresConfig struct {
 }
 
 type postgresImpl struct {
-	db *gorm.DB
+	db     *gorm.DB
+	tp     trace.TracerProvider
+	config PostgresConfig
 }
 
-func NewPostgres(config PostgresConfig) (Message, error) {
+func NewPostgres(config PostgresConfig, traceProvider trace.TracerProvider) (Message, error) {
+	p := &postgresImpl{tp: traceProvider, config: config}
+	if err := p.initDB(); err != nil {
+		return nil, err
+	}
+
 	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s",
 		config.Host, config.User, config.Password, config.DBName, config.Port)
-	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
+	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
+		Logger: logger.Default.LogMode(logger.Error),
+	})
+	p.db = db
+	if err != nil {
+		return nil, err
+	}
 
-	return &postgresImpl{db: db}, err
+	if err := p.db.AutoMigrate(&postgresMessage{}); err != nil {
+		return nil, err
+	}
+
+	return p, nil
+}
+
+func (p *postgresImpl) initDB() error {
+	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=postgres port=%s",
+		p.config.Host, p.config.User, p.config.Password, p.config.Port)
+	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
+	if err != nil {
+		return err
+	}
+
+	result := db.Exec(fmt.Sprintf("CREATE DATABASE %s ;", p.config.DBName))
+	if result.Error != nil && !strings.Contains(result.Error.Error(), "exists") {
+		return result.Error
+	}
+
+	return nil
 }
 
 func (p *postgresImpl) SaveMessage(ctx context.Context, subject string, message *broker.Message) error {
