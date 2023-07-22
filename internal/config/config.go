@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/MeysamBavi/go-broker/api/server"
 	"github.com/MeysamBavi/go-broker/internal/store"
+	"github.com/MeysamBavi/go-broker/internal/tracing"
 	"github.com/MeysamBavi/go-broker/pkg/metrics"
 	"strings"
 )
@@ -12,6 +13,7 @@ type Config struct {
 	Server  server.Config  `config:"server"`
 	Store   store.Config   `config:"store"`
 	Metrics metrics.Config `config:"metrics"`
+	Tracing tracing.Config `config:"tracing"`
 }
 
 func (c *Config) Validate() error {
@@ -51,6 +53,14 @@ func Default() Config {
 		Metrics: metrics.Config{
 			Enabled:  true,
 			HttpPort: "2112",
+		},
+		Tracing: tracing.Config{
+			Enabled:          true,
+			UseJaeger:        false,
+			OutputFile:       "./traces.json",
+			JaegerAgentHost:  "localhost",
+			JaegerAgentPort:  "6831",
+			SamplingFraction: 1,
 		},
 	}
 }

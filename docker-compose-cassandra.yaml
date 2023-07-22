@@ -15,6 +15,9 @@ services:
       - GO_BROKER_STORE__USE_CASSANDRA=true
       - GO_BROKER_STORE__CASSANDRA__HOST=cassandra:9042
       - GO_BROKER_STORE__CASSANDRA__KEYSPACE=go_broker
+      - GO_BROKER_TRACING__USE_JAEGER=true
+      - GO_BROKER_TRACING__JAEGER_AGENT_HOST=jaeger
+      - GO_BROKER_TRACING__JAEGER_AGENT_PORT=6831
 
   cassandra:
     image: cassandra:4.1
@@ -26,6 +29,11 @@ services:
       retries: 5
       timeout: 5s
       start_period: 1m5s
+      
+  jaeger:
+    image: jaegertracing/all-in-one
+    ports:
+      - "16686:16686"
 
 volumes:
   db:
