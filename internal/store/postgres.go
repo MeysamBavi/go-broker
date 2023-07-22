@@ -7,7 +7,9 @@ import (
 	"go.opentelemetry.io/otel/trace"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 	"gorm.io/gorm/logger"
+	"math"
 	"strings"
 	"time"
 )
@@ -42,7 +44,7 @@ func NewPostgres(config PostgresConfig, traceProvider trace.TracerProvider) (Mes
 		return nil, err
 	}
 
-	if err := p.db.AutoMigrate(&postgresMessage{}); err != nil {
+	if err := p.db.AutoMigrate(&postgresMessage{}, &postgresSequence{}); err != nil {
 		return nil, err
 	}
 
@@ -65,11 +67,36 @@ func (p *postgresImpl) initDB() error {
 	return nil
 }
 
+func (p *postgresImpl) createNextId(ctx context.Context, subject string) (int32, error) {
+	subjectSequence := postgresSequence{
+		Subject: subject,
+	}
+	if err := p.db.WithContext(ctx).
+		Clauses(clause.OnConflict{DoNothing: true}).Create(&subjectSequence).Error; err != nil && err != gorm.ErrDuplicatedKey {
+		return 0, err
+	}
+
+	subjectSequence = postgresSequence{
+		Subject: subject,
+	}
+	if err := p.db.WithContext(ctx).Model(&subjectSequence).
+		Clauses(clause.Returning{}).Update("val", gorm.Expr("val + 1")).Error; err != nil {
+		return 0, err
+	}
+	return subjectSequence.Val, nil
+}
+
 func (p *postgresImpl) SaveMessage(ctx context.Context, subject string, message *broker.Message) error {
+	newId, err := p.createNextId(ctx, subject)
+	if err != nil {
+		return err
+	}
+
 	msg := postgresMessage{
 		Subject:           subject,
+		Id:                newId,
 		Body:              message.Body,
-		ExpirationSeconds: int(message.Expiration.Seconds()),
+		ExpirationSeconds: int(math.Round(message.Expiration.Seconds())),
 	}
 
 	result := p.db.WithContext(ctx).Create(&msg)
@@ -77,17 +104,15 @@ func (p *postgresImpl) SaveMessage(ctx context.Context, subject string, message 
 		return result.Error
 	}
 
-	message.Id = int(msg.ID)
+	message.Id = int(msg.Id)
 
 	return nil
 }
 
 func (p *postgresImpl) GetMessage(ctx context.Context, subject string, id int) (*broker.Message, error) {
 	msg := postgresMessage{
-		Model: gorm.Model{
-			ID: uint(id),
-		},
 		Subject: subject,
+		Id:      int32(id),
 	}
 	p.db.WithContext(ctx).Take(&msg)
 
@@ -109,9 +134,18 @@ func (p *postgresImpl) GetMessage(ctx context.Context, subject string, id int) (
 	return &message, nil
 }
 
+type postgresSequence struct {
+	Subject string `gorm:"primaryKey"`
+	Val     int32  `gorm:"not null"`
+}
+
+func (p *postgresSequence) TableName() string {
+	return "sequences"
+}
+
 type postgresMessage struct {
-	gorm.Model
 	Subject           string `gorm:"primaryKey"`
+	Id                int32  `gorm:"primaryKey;autoIncrement:false"`
 	Body              string
 	ExpirationSeconds int
 }
