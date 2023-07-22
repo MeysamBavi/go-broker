@@ -49,6 +49,14 @@ func Default() Config {
 				Host:     "localhost:9042",
 				Keyspace: "go_broker",
 			},
+			UsePostgres: false,
+			Postgres: store.PostgresConfig{
+				Host:     "localhost",
+				Port:     "5432",
+				User:     "postgres",
+				Password: "",
+				DBName:   "go_broker",
+			},
 		},
 		Metrics: metrics.Config{
 			Enabled:  true,
