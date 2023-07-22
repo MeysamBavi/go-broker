@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/MeysamBavi/go-broker/pkg/broker"
+	"github.com/uptrace/opentelemetry-go-extra/otelgorm"
 	"go.opentelemetry.io/otel/trace"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -45,6 +46,11 @@ func NewPostgres(config PostgresConfig, traceProvider trace.TracerProvider) (Mes
 	}
 
 	if err := p.db.AutoMigrate(&postgresMessage{}, &postgresSequence{}); err != nil {
+		return nil, err
+	}
+
+	if err := p.db.Use(otelgorm.NewPlugin(otelgorm.WithTracerProvider(traceProvider),
+		otelgorm.WithDBName(config.DBName))); err != nil {
 		return nil, err
 	}
 

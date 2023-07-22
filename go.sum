@@ -87,6 +87,10 @@ github.com/stretchr/testify v1.3.0/go.mod h1:M5WIy9Dh21IEIfnGCwXGc5bZfKNJtfHm1UV
 github.com/stretchr/testify v1.7.0/go.mod h1:6Fq8oRcR53rry900zMqJjRRixrwX3KX962/h/Wwjteg=
 github.com/stretchr/testify v1.8.4 h1:CcVxjf3Q8PM0mHUKJCdn+eZZtm5yQwehR5yeSVQQcUk=
 github.com/stretchr/testify v1.8.4/go.mod h1:sz/lmYIOXD/1dqDmKjjqLyZ2RngseejIcXlSw2iwfAo=
+github.com/uptrace/opentelemetry-go-extra/otelgorm v0.2.2 h1:ptBsJKjRXx46Qtw3h1CFSxLhbUfGENxXP5DAqAaAgZc=
+github.com/uptrace/opentelemetry-go-extra/otelgorm v0.2.2/go.mod h1:I31DilV6DKiHDUJBEP/Bou+UZeeNDz6LqZpJCTV9q/Y=
+github.com/uptrace/opentelemetry-go-extra/otelsql v0.2.2 h1:USRngIQppxeyb39XzkVHXwQesKK0+JSwnHE/1c7fgic=
+github.com/uptrace/opentelemetry-go-extra/otelsql v0.2.2/go.mod h1:1frv9RN1rlTq0jzCq+mVuEQisubZCQ4OU6S/8CaHzGY=
 go.opentelemetry.io/contrib/instrumentation/github.com/gocql/gocql/otelgocql v0.42.0 h1:ZOkp6aZUoqma6p2o/VRA+qlZwVxZt2YnCw8xZF/q+YQ=
 go.opentelemetry.io/contrib/instrumentation/github.com/gocql/gocql/otelgocql v0.42.0/go.mod h1:Jw/o8O20eap/Ez3gmNv2wvTLgNvkXdui2fSBsPR52XU=
 go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.42.0 h1:ZOLJc06r4CB42laIXg/7udr0pbZyuAihN10A/XuiQRY=
