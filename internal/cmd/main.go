@@ -44,7 +44,7 @@ func Execute() {
 			log.Fatal("could not connect to cassandra: ", err)
 		}
 	case cfg.Store.UsePostgres:
-		msgStore, err = store.NewPostgres(cfg.Store.Postgres, tracerProvider)
+		msgStore, err = store.NewPostgres(cfg.Store.Postgres, store.GetDefaultTimeProvider(), tracerProvider)
 		if err != nil {
 			log.Fatal("could not connect to postgres: ", err)
 		}

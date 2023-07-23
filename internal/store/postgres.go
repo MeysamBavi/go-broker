@@ -10,7 +10,6 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 	"gorm.io/gorm/logger"
-	"math"
 	"strings"
 	"time"
 )
@@ -24,13 +23,13 @@ type PostgresConfig struct {
 }
 
 type postgresImpl struct {
-	db     *gorm.DB
-	tp     trace.TracerProvider
-	config PostgresConfig
+	db           *gorm.DB
+	config       PostgresConfig
+	timeProvider TimeProvider
 }
 
-func NewPostgres(config PostgresConfig, traceProvider trace.TracerProvider) (Message, error) {
-	p := &postgresImpl{tp: traceProvider, config: config}
+func NewPostgres(config PostgresConfig, timeProvider TimeProvider, traceProvider trace.TracerProvider) (Message, error) {
+	p := &postgresImpl{timeProvider: timeProvider, config: config}
 	if err := p.initDB(); err != nil {
 		return nil, err
 	}
@@ -102,7 +101,7 @@ func (p *postgresImpl) SaveMessage(ctx context.Context, subject string, message 
 		Subject:           subject,
 		Id:                newId,
 		Body:              message.Body,
-		ExpirationSeconds: int(math.Round(message.Expiration.Seconds())),
+		ExpirationSeconds: message.Expiration.Seconds(),
 	}
 
 	result := p.db.WithContext(ctx).Create(&msg)
@@ -131,6 +130,10 @@ func (p *postgresImpl) GetMessage(ctx context.Context, subject string, id int) (
 		return nil, err
 	}
 
+	if p.timeProvider.GetCurrentTime().Sub(msg.CreatedAt).Seconds() > msg.ExpirationSeconds {
+		return nil, ErrExpired
+	}
+
 	message := broker.Message{
 		Id:         id,
 		Body:       msg.Body,
@@ -153,7 +156,8 @@ type postgresMessage struct {
 	Subject           string `gorm:"primaryKey"`
 	Id                int32  `gorm:"primaryKey;autoIncrement:false"`
 	Body              string
-	ExpirationSeconds int
+	ExpirationSeconds float64
+	CreatedAt         time.Time
 }
 
 func (p *postgresMessage) TableName() string {
