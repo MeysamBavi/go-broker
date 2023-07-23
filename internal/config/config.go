@@ -20,6 +20,7 @@ func (c *Config) Validate() error {
 	stores := map[string]bool{
 		"Store.UseInMemory":  c.Store.UseInMemory,
 		"Store.UseCassandra": c.Store.UseCassandra,
+		"Store.UsePostgres":  c.Store.UsePostgres,
 	}
 	trues := make([]string, 0)
 	for s, use := range stores {
@@ -48,6 +49,14 @@ func Default() Config {
 			Cassandra: store.CassandraConfig{
 				Host:     "localhost:9042",
 				Keyspace: "go_broker",
+			},
+			UsePostgres: false,
+			Postgres: store.PostgresConfig{
+				Host:     "localhost",
+				Port:     "5432",
+				User:     "postgres",
+				Password: "postgres",
+				DBName:   "go_broker",
 			},
 		},
 		Metrics: metrics.Config{

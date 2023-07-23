@@ -1,0 +1,41 @@
+version: "3.8"
+services:
+  broker:
+    image: "go-broker"
+    build:
+      context: ./
+    ports:
+      - "50043:50043"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      - GO_BROKER_SERVER__HOST=0.0.0.0:50043
+      - GO_BROKER_STORE__IN_MEMORY=false
+      - GO_BROKER_STORE__USE_POSTGRES=true
+      - GO_BROKER_STORE__POSTGRES__HOST=postgres
+      - GO_BROKER_STORE__POSTGRES__PORT=5432
+      - GO_BROKER_TRACING__USE_JAEGER=true
+      - GO_BROKER_TRACING__JAEGER_AGENT_HOST=jaeger
+      - GO_BROKER_TRACING__JAEGER_AGENT_PORT=6831
+
+  postgres:
+    image: postgres:15.3
+    volumes:
+      - postgres_db:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_PASSWORD=postgres
+    healthcheck:
+      test: ["CMD", "pg_isready"]
+      interval: 10s
+      retries: 5
+      timeout: 5s
+      start_period: 30s
+      
+  jaeger:
+    image: jaegertracing/all-in-one
+    ports:
+      - "16686:16686"
+
+volumes:
+  postgres_db:
