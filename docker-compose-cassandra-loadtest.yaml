@@ -24,8 +24,6 @@ services:
 
   cassandra:
     image: cassandra:4.1
-    volumes:
-      - db:/var/lib/cassandra
     healthcheck:
       test: ["CMD", "cqlsh", "-e", "describe keyspaces ;"]
       interval: 10s
@@ -53,6 +51,4 @@ services:
       - metrics
       
 volumes:
-  db:
   grafana_data:
-
