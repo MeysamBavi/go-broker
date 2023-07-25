@@ -1,4 +1,4 @@
-package main
+package scheduler
 
 import (
 	"context"
@@ -64,6 +64,7 @@ func schedule[T any](cfg config.Scheduler, supplier func() T) <-chan T {
 
 func send[T any](ctx context.Context, ch chan<- T, goalFunc func(t float64) float64, supplier func() T) float64 {
 	ticker := time.NewTicker(timeStep)
+	defer ticker.Stop()
 
 	achievedGoal := 0.0
 	startTime := time.Now()

@@ -1,5 +1,6 @@
-connections: 40
+connections: 3
 start_rps: 0
 target_rps: 500
 rise_duration: 30s
-plateau_duration: 5s
+plateau_duration: 10s
+error_rate_threshold: 0.05

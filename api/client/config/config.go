@@ -16,20 +16,22 @@ const (
 )
 
 type Config struct {
-	Connections     int           `client:"connections"`
-	StartRPS        float64       `client:"start_rps"`
-	TargetRPS       float64       `client:"target_rps"`
-	RiseDuration    time.Duration `client:"rise_duration"`
-	PlateauDuration time.Duration `client:"plateau_duration"`
+	Connections        int           `client:"connections"`
+	StartRPS           float64       `client:"start_rps"`
+	TargetRPS          float64       `client:"target_rps"`
+	RiseDuration       time.Duration `client:"rise_duration"`
+	PlateauDuration    time.Duration `client:"plateau_duration"`
+	ErrorRateThreshold float64       `client:"error_rate_threshold"`
 }
 
 func Default() Config {
 	return Config{
-		Connections:     10,
-		StartRPS:        2,
-		TargetRPS:       4,
-		RiseDuration:    30 * time.Second,
-		PlateauDuration: 5 * time.Second,
+		Connections:        10,
+		StartRPS:           2,
+		TargetRPS:          4,
+		RiseDuration:       30 * time.Second,
+		PlateauDuration:    5 * time.Second,
+		ErrorRateThreshold: 0.05,
 	}
 }
 
