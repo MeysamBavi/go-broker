@@ -43,7 +43,7 @@ func Execute() {
 	case cfg.Store.UseInMemory:
 		msgStore = store.NewInMemoryMessage(store.GetDefaultTimeProvider())
 	case cfg.Store.UseCassandra:
-		msgStore, err = store.NewCassandra(cfg.Store.Cassandra, tracerProvider)
+		msgStore, err = store.NewCassandra(cfg.Store.Cassandra, sequenceStore, tracerProvider)
 		if err != nil {
 			log.Fatal("could not connect to cassandra: ", err)
 		}
