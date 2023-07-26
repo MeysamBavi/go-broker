@@ -6,14 +6,12 @@ import (
 )
 
 type memSequence struct {
-	sequences map[string]int32
+	sequences sync.Map
 	locks     sync.Map
 }
 
 func NewInMemorySequence() Sequence {
-	return &memSequence{
-		sequences: make(map[string]int32),
-	}
+	return &memSequence{}
 }
 
 func (m *memSequence) lock(subject string) {
@@ -33,18 +31,24 @@ func (m *memSequence) CreateNewId(_ context.Context, subject string) (int32, err
 	m.lock(subject)
 	defer m.unlock(subject)
 
-	val := m.sequences[subject]
-	val++
-	m.sequences[subject] = val
+	val, ok := m.sequences.Load(subject)
+	var id int32
+	if ok {
+		id = val.(int32)
+	} else {
+		id = 0
+	}
+	id++
+	m.sequences.Store(subject, id)
 
-	return val, nil
+	return id, nil
 }
 
 func (m *memSequence) Load(ctx context.Context, subject string, lastId int32) error {
 	m.lock(subject)
 	m.unlock(subject)
 
-	m.sequences[subject] = lastId
+	m.sequences.Store(subject, lastId)
 
 	return nil
 }
