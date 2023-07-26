@@ -8,7 +8,6 @@ import (
 	"go.opentelemetry.io/otel/trace"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
-	"gorm.io/gorm/clause"
 	"gorm.io/gorm/logger"
 	"strings"
 	"time"
@@ -25,11 +24,12 @@ type PostgresConfig struct {
 type postgresImpl struct {
 	db           *gorm.DB
 	config       PostgresConfig
+	sequences    Sequence
 	timeProvider TimeProvider
 }
 
-func NewPostgres(config PostgresConfig, timeProvider TimeProvider, traceProvider trace.TracerProvider) (Message, error) {
-	p := &postgresImpl{timeProvider: timeProvider, config: config}
+func NewPostgres(config PostgresConfig, sequence Sequence, timeProvider TimeProvider, traceProvider trace.TracerProvider) (Message, error) {
+	p := &postgresImpl{timeProvider: timeProvider, config: config, sequences: sequence}
 	if err := p.initDB(); err != nil {
 		return nil, err
 	}
@@ -44,12 +44,23 @@ func NewPostgres(config PostgresConfig, timeProvider TimeProvider, traceProvider
 		return nil, err
 	}
 
-	if err := p.db.AutoMigrate(&postgresMessage{}, &postgresSequence{}); err != nil {
+	if err := p.db.AutoMigrate(&postgresMessage{}); err != nil {
 		return nil, err
 	}
 
+	sqlDb, err := p.db.DB()
+	if err != nil {
+		return nil, err
+	}
+	sqlDb.SetMaxIdleConns(100)
+	sqlDb.SetMaxOpenConns(100)
+
 	if err := p.db.Use(otelgorm.NewPlugin(otelgorm.WithTracerProvider(traceProvider),
 		otelgorm.WithDBName(config.DBName))); err != nil {
+		return nil, err
+	}
+
+	if err := p.loadSequences(); err != nil {
 		return nil, err
 	}
 
@@ -60,6 +71,11 @@ func (p *postgresImpl) initDB() error {
 	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=postgres port=%s",
 		p.config.Host, p.config.User, p.config.Password, p.config.Port)
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
+	defer func() {
+		if sqlDb, err := db.DB(); err != nil {
+			sqlDb.Close()
+		}
+	}()
 	if err != nil {
 		return err
 	}
@@ -72,27 +88,30 @@ func (p *postgresImpl) initDB() error {
 	return nil
 }
 
-func (p *postgresImpl) createNextId(ctx context.Context, subject string) (int32, error) {
-	subjectSequence := postgresSequence{
-		Subject: subject,
+func (p *postgresImpl) loadSequences() error {
+	ctx := context.Background()
+	rows, err := p.db.WithContext(ctx).Model(&postgresMessage{}).
+		Select("subject, max(id) as last_id").Group("subject").Rows()
+	defer rows.Close()
+	if err != nil {
+		return err
 	}
-	if err := p.db.WithContext(ctx).
-		Clauses(clause.OnConflict{DoNothing: true}).Create(&subjectSequence).Error; err != nil && err != gorm.ErrDuplicatedKey {
-		return 0, err
+	for rows.Next() {
+		var subject string
+		var lastId int32
+		if err := rows.Scan(&subject, &lastId); err != nil {
+			return err
+		}
+		if err := p.sequences.Load(ctx, subject, lastId); err != nil {
+			return err
+		}
 	}
 
-	subjectSequence = postgresSequence{
-		Subject: subject,
-	}
-	if err := p.db.WithContext(ctx).Model(&subjectSequence).
-		Clauses(clause.Returning{}).Update("val", gorm.Expr("val + 1")).Error; err != nil {
-		return 0, err
-	}
-	return subjectSequence.Val, nil
+	return nil
 }
 
 func (p *postgresImpl) SaveMessage(ctx context.Context, subject string, message *broker.Message) error {
-	newId, err := p.createNextId(ctx, subject)
+	newId, err := p.sequences.CreateNewId(ctx, subject)
 	if err != nil {
 		return err
 	}
@@ -141,15 +160,6 @@ func (p *postgresImpl) GetMessage(ctx context.Context, subject string, id int) (
 	}
 
 	return &message, nil
-}
-
-type postgresSequence struct {
-	Subject string `gorm:"primaryKey"`
-	Val     int32  `gorm:"not null"`
-}
-
-func (p *postgresSequence) TableName() string {
-	return "sequences"
 }
 
 type postgresMessage struct {

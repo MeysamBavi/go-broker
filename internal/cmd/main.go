@@ -34,6 +34,10 @@ func Execute() {
 	tracerProvider, shutdown := tracing.NewTracerProvider(cfg.Tracing)
 	defer shutdown()
 
+	var sequenceStore store.Sequence
+	sequenceStore = store.NewInMemorySequence()
+	sequenceStore = store.SequenceWithTracing(sequenceStore, tracerProvider)
+
 	var msgStore store.Message
 	switch {
 	case cfg.Store.UseInMemory:
@@ -44,7 +48,7 @@ func Execute() {
 			log.Fatal("could not connect to cassandra: ", err)
 		}
 	case cfg.Store.UsePostgres:
-		msgStore, err = store.NewPostgres(cfg.Store.Postgres, store.GetDefaultTimeProvider(), tracerProvider)
+		msgStore, err = store.NewPostgres(cfg.Store.Postgres, sequenceStore, store.GetDefaultTimeProvider(), tracerProvider)
 		if err != nil {
 			log.Fatal("could not connect to postgres: ", err)
 		}
