@@ -22,8 +22,6 @@ const (
 func Collect(logStream <-chan ResponseLog) <-chan Summary {
 	index := 0
 	buffer := make([]ResponseLog, samples)
-	ticker := time.NewTicker(reportPeriod)
-	defer ticker.Stop()
 
 	failed := 0
 	total := 0
@@ -50,6 +48,8 @@ func Collect(logStream <-chan ResponseLog) <-chan Summary {
 	}
 
 	go func() {
+		ticker := time.NewTicker(reportPeriod)
+		defer ticker.Stop()
 		defer close(summaryStream)
 		for {
 			select {
