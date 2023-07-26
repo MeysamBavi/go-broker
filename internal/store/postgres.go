@@ -14,11 +14,12 @@ import (
 )
 
 type PostgresConfig struct {
-	Host     string `config:"host"`
-	Port     string `config:"port"`
-	User     string `config:"user"`
-	Password string `config:"password"`
-	DBName   string `config:"db_name"`
+	Host           string `config:"host"`
+	Port           string `config:"port"`
+	User           string `config:"user"`
+	Password       string `config:"password"`
+	DBName         string `config:"db_name"`
+	MaxConnections int    `config:"max_connections"`
 }
 
 type postgresImpl struct {
@@ -52,8 +53,8 @@ func NewPostgres(config PostgresConfig, sequence Sequence, timeProvider TimeProv
 	if err != nil {
 		return nil, err
 	}
-	sqlDb.SetMaxIdleConns(100)
-	sqlDb.SetMaxOpenConns(100)
+	sqlDb.SetMaxIdleConns(config.MaxConnections)
+	sqlDb.SetMaxOpenConns(config.MaxConnections)
 
 	if err := p.db.Use(otelgorm.NewPlugin(otelgorm.WithTracerProvider(traceProvider),
 		otelgorm.WithDBName(config.DBName))); err != nil {

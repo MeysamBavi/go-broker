@@ -52,11 +52,12 @@ func Default() Config {
 			},
 			UsePostgres: false,
 			Postgres: store.PostgresConfig{
-				Host:     "localhost",
-				Port:     "5432",
-				User:     "postgres",
-				Password: "postgres",
-				DBName:   "go_broker",
+				Host:           "localhost",
+				Port:           "5432",
+				User:           "postgres",
+				Password:       "postgres",
+				DBName:         "go_broker",
+				MaxConnections: 100,
 			},
 		},
 		Metrics: metrics.Config{
