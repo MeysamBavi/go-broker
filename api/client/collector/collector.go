@@ -16,7 +16,7 @@ type Summary struct {
 
 const (
 	reportPeriod = time.Second
-	samples      = 200
+	samples      = 1000
 )
 
 func Collect(logStream <-chan ResponseLog) <-chan Summary {

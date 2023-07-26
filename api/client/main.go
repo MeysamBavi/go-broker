@@ -12,7 +12,9 @@ import (
 )
 
 var (
-	host = flag.String("host", "localhost:50043", "the host to connect to")
+	host     = flag.String("host", "localhost:50043", "the host to connect to")
+	verbose  = flag.Bool("verbose", false, "log more info")
+	subjects = flag.Int("subjects", 0, "limits the number of different subjects used")
 )
 
 func main() {
@@ -32,8 +34,10 @@ func main() {
 			TargetRPS:       cfg.TargetRPS,
 			RiseDuration:    cfg.RiseDuration,
 			PlateauDuration: cfg.PlateauDuration,
+			Subjects:        *subjects,
 		}),
 		Connections: cfg.Connections,
+		Verbose:     *verbose,
 	}
 
 	for summary := range collector.Collect(s.Start()) {

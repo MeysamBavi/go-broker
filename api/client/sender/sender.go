@@ -20,6 +20,7 @@ type Sender struct {
 	PublishStream <-chan *pb.PublishRequest
 	FetchStream   <-chan *pb.FetchRequest
 	Connections   int
+	Verbose       bool
 }
 
 func (s *Sender) Start() <-chan collector.ResponseLog {
@@ -41,7 +42,7 @@ func (s *Sender) Start() <-chan collector.ResponseLog {
 	for i := 0; i < s.Connections; i++ {
 		wg.Add(1)
 		go func() {
-			handleConnection(s.Host, publishStream, fetchStream, responseLogStream)
+			handleConnection(s.Host, publishStream, fetchStream, responseLogStream, s.Verbose)
 			wg.Done()
 		}()
 	}
@@ -53,7 +54,7 @@ func (s *Sender) Start() <-chan collector.ResponseLog {
 	return responseLogStream
 }
 
-func handleConnection(host string, publishStream <-chan *pb.PublishRequest, fetchStream <-chan *pb.FetchRequest, responseLogStream chan<- collector.ResponseLog) {
+func handleConnection(host string, publishStream <-chan *pb.PublishRequest, fetchStream <-chan *pb.FetchRequest, responseLogStream chan<- collector.ResponseLog, verbose bool) {
 	conn, err := grpc.Dial(host, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	defer conn.Close()
 	if err != nil {
@@ -69,7 +70,7 @@ func handleConnection(host string, publishStream <-chan *pb.PublishRequest, fetc
 		var publishWg sync.WaitGroup
 		for request := range publishStream {
 			publishWg.Add(1)
-			go sendPublishRequest(&publishWg, client, ctx, request, responseLogStream)
+			go sendPublishRequest(&publishWg, client, ctx, request, responseLogStream, verbose)
 		}
 		cancel()
 		publishWg.Wait()
@@ -82,7 +83,7 @@ func handleConnection(host string, publishStream <-chan *pb.PublishRequest, fetc
 		var fetchWg sync.WaitGroup
 		for request := range fetchStream {
 			fetchWg.Add(1)
-			go sendFetchRequest(&fetchWg, client, ctx, request, responseLogStream)
+			go sendFetchRequest(&fetchWg, client, ctx, request, responseLogStream, verbose)
 		}
 		cancel()
 		fetchWg.Wait()
@@ -92,8 +93,11 @@ func handleConnection(host string, publishStream <-chan *pb.PublishRequest, fetc
 	wg.Wait()
 }
 
-func sendPublishRequest(wg *sync.WaitGroup, client pb.BrokerClient, ctx context.Context, request *pb.PublishRequest, receiveTimeStream chan<- collector.ResponseLog) {
-	_, err := client.Publish(ctx, request)
+func sendPublishRequest(wg *sync.WaitGroup, client pb.BrokerClient, ctx context.Context, request *pb.PublishRequest, receiveTimeStream chan<- collector.ResponseLog, verbose bool) {
+	res, err := client.Publish(ctx, request)
+	if verbose {
+		log.Printf("published %q to subject %q, got id = %d\n", request.GetBody(), request.GetSubject(), res.GetId())
+	}
 	receiveTimeStream <- collector.ResponseLog{
 		At:    time.Now(),
 		Error: err,
@@ -101,8 +105,11 @@ func sendPublishRequest(wg *sync.WaitGroup, client pb.BrokerClient, ctx context.
 	wg.Done()
 }
 
-func sendFetchRequest(wg *sync.WaitGroup, client pb.BrokerClient, ctx context.Context, request *pb.FetchRequest, receiveTimeStream chan<- collector.ResponseLog) {
-	_, err := client.Fetch(ctx, request)
+func sendFetchRequest(wg *sync.WaitGroup, client pb.BrokerClient, ctx context.Context, request *pb.FetchRequest, receiveTimeStream chan<- collector.ResponseLog, verbose bool) {
+	res, err := client.Fetch(ctx, request)
+	if verbose {
+		log.Printf("fetched id = %d from subject %q, got %q\n", request.GetId(), request.GetSubject(), res.GetBody())
+	}
 	receiveTimeStream <- collector.ResponseLog{
 		At:    time.Now(),
 		Error: err,

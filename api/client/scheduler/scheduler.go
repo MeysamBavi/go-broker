@@ -14,24 +14,30 @@ const (
 	timeStep      = time.Microsecond
 )
 
-var subjects = []string{
-	"alpha",
-	"beta",
-	"gamma",
-	"delta",
-	"epsilon",
-	"zeta",
-	"eta",
-	"theta",
-	"iota",
-	"kappa",
-}
-
 func SchedulePublish(cfg config.Scheduler) <-chan *pb.PublishRequest {
+	subjects := []string{
+		"alpha",
+		"beta",
+		"gamma",
+		"delta",
+		"epsilon",
+		"zeta",
+		"eta",
+		"theta",
+		"iota",
+		"kappa",
+	}
+	suffixLen := 4
+	if cfg.Subjects > 0 && cfg.Subjects < len(subjects) {
+		subjects = subjects[:cfg.Subjects]
+	}
+	if cfg.Subjects > 0 {
+		suffixLen = 0
+	}
 	supplier := func() *pb.PublishRequest {
 		return &pb.PublishRequest{
-			Subject:           RandomItem(subjects) + RandomStringWithCharset(4, "01"),
-			Body:              []byte(RandomString(RandomInt(10, 30))),
+			Subject:           RandomItem(subjects) + RandomStringWithCharset(suffixLen, "01"),
+			Body:              []byte(RandomString(RandomInt(5, 15))),
 			ExpirationSeconds: int32(RandomInt(10, 20)),
 		}
 	}
