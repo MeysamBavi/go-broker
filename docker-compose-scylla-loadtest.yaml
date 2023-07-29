@@ -1,0 +1,55 @@
+version: "3.8"
+services:
+  broker:
+    image: "go-broker"
+    build:
+      context: ./
+    ports:
+      - "50043:50043"
+    depends_on:
+      scylla:
+        condition: service_healthy
+    environment:
+      - GO_BROKER_SERVER__HOST=0.0.0.0:50043
+      - GO_BROKER_STORE__IN_MEMORY=false
+      - GO_BROKER_STORE__USE_CASSANDRA=true
+      - GO_BROKER_STORE__CASSANDRA__HOST=scylla:9042
+      - GO_BROKER_STORE__CASSANDRA__KEYSPACE=go_broker
+      - GO_BROKER_STORE__BATCH_SIZE=4096
+      - GO_BROKER_TRACING__ENABLED=false
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1GB
+
+  scylla:
+    image: scylladb/scylla:5.2
+    healthcheck:
+      test: ["CMD", "cqlsh", "-e", "describe keyspaces ;"]
+      interval: 10s
+      retries: 5
+      timeout: 5s
+      start_period: 1m5s
+
+  metrics:
+    image: prom/prometheus:v2.45.0
+    ports:
+      - "9090:9090"
+    volumes:
+      - "./prometheus.yml:/etc/prometheus/prometheus.yml"
+    depends_on:
+      - broker
+
+  grafana:
+    image: grafana/grafana-enterprise:10.0.2
+    restart: unless-stopped
+    ports:
+      - '3000:3000'
+    volumes:
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - metrics
+      
+volumes:
+  grafana_data:
