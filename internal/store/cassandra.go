@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"fmt"
+	"github.com/MeysamBavi/go-broker/internal/store/batch"
 	"github.com/MeysamBavi/go-broker/pkg/broker"
 	"github.com/gocql/gocql"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/gocql/gocql/otelgocql"
@@ -18,12 +19,13 @@ type CassandraConfig struct {
 }
 
 type cassandra struct {
-	session   *gocql.Session
-	config    CassandraConfig
-	sequences Sequence
+	session      *gocql.Session
+	config       CassandraConfig
+	sequences    Sequence
+	batchHandler batch.Handler
 }
 
-func NewCassandra(config CassandraConfig, sequence Sequence, tracerProvider trace.TracerProvider) (Message, error) {
+func NewCassandra(config CassandraConfig, sequence Sequence, batchHandlerProvider func(batch.Writer) batch.Handler, tracerProvider trace.TracerProvider) (Message, error) {
 	ctx := context.Background()
 	{
 		cluster := gocql.NewCluster(config.Host)
@@ -55,6 +57,7 @@ func NewCassandra(config CassandraConfig, sequence Sequence, tracerProvider trac
 		config:    config,
 		sequences: sequence,
 	}
+	c.batchHandler = batchHandlerProvider(c.saveBatch)
 
 	err = c.init()
 	if err != nil {
@@ -97,31 +100,7 @@ func (c *cassandra) loadSequences(ctx context.Context) error {
 }
 
 func (c *cassandra) SaveMessage(ctx context.Context, subject string, message *broker.Message) error {
-	newId, err := c.sequences.CreateNewId(ctx, subject)
-	if err != nil {
-		return err
-	}
-
-	expirationSeconds := int(math.Round(message.Expiration.Seconds()))
-	if expirationSeconds <= 0 {
-		message.Id = int(newId)
-		return nil
-	}
-
-	if err := c.session.Query(
-		"INSERT INTO messages_by_subject_and_id (subject, id, body, expiration) VALUES (?, ?, ?, ?) USING TTL ?;",
-		subject,
-		newId,
-		message.Body,
-		message.Expiration,
-		expirationSeconds,
-	).WithContext(ctx).Exec(); err != nil {
-		return err
-	}
-
-	message.Id = int(newId)
-
-	return nil
+	return c.batchHandler.AddAndWait(ctx, subject, message)
 }
 
 func (c *cassandra) GetMessage(ctx context.Context, subject string, id int) (*broker.Message, error) {
@@ -141,4 +120,31 @@ func (c *cassandra) GetMessage(ctx context.Context, subject string, id int) (*br
 
 	message.Expiration = time.Duration(expiration.Nanoseconds)
 	return &message, nil
+}
+
+func (c *cassandra) saveBatch(ctx context.Context, values []*batch.Item) error {
+	insertBatch := c.session.NewBatch(gocql.UnloggedBatch)
+	for _, item := range values {
+		newId, err := c.sequences.CreateNewId(ctx, item.Subject)
+		if err != nil {
+			return err
+		}
+		item.Message.Id = int(newId)
+
+		expirationSeconds := int(math.Round(item.Message.Expiration.Seconds()))
+		if expirationSeconds <= 0 {
+			continue
+		}
+
+		insertBatch.WithContext(ctx).Query(
+			"INSERT INTO messages_by_subject_and_id (subject, id, body, expiration) VALUES (?, ?, ?, ?) USING TTL ?;",
+			item.Subject,
+			newId,
+			item.Message.Body,
+			item.Message.Expiration,
+			expirationSeconds,
+		)
+	}
+
+	return c.session.ExecuteBatch(insertBatch)
 }
