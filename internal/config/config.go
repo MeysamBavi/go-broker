@@ -4,9 +4,11 @@ import (
 	"fmt"
 	"github.com/MeysamBavi/go-broker/api/server"
 	"github.com/MeysamBavi/go-broker/internal/store"
+	"github.com/MeysamBavi/go-broker/internal/store/batch"
 	"github.com/MeysamBavi/go-broker/internal/tracing"
 	"github.com/MeysamBavi/go-broker/pkg/metrics"
 	"strings"
+	"time"
 )
 
 type Config struct {
@@ -14,6 +16,7 @@ type Config struct {
 	Store   store.Config   `config:"store"`
 	Metrics metrics.Config `config:"metrics"`
 	Tracing tracing.Config `config:"tracing"`
+	Batch   batch.Config   `config:"batch"`
 }
 
 func (c *Config) Validate() error {
@@ -71,6 +74,10 @@ func Default() Config {
 			JaegerAgentHost:  "localhost",
 			JaegerAgentPort:  "6831",
 			SamplingFraction: 1,
+		},
+		Batch: batch.Config{
+			Timeout: 5 * time.Millisecond,
+			Size:    2048,
 		},
 	}
 }
