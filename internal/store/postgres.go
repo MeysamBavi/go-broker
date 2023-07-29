@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"fmt"
+	"github.com/MeysamBavi/go-broker/internal/store/batch"
 	"github.com/MeysamBavi/go-broker/pkg/broker"
 	"github.com/uptrace/opentelemetry-go-extra/otelgorm"
 	"go.opentelemetry.io/otel/trace"
@@ -26,11 +27,18 @@ type postgresImpl struct {
 	db           *gorm.DB
 	config       PostgresConfig
 	sequences    Sequence
+	batchHandler batch.Handler
 	timeProvider TimeProvider
 }
 
-func NewPostgres(config PostgresConfig, sequence Sequence, timeProvider TimeProvider, traceProvider trace.TracerProvider) (Message, error) {
-	p := &postgresImpl{timeProvider: timeProvider, config: config, sequences: sequence}
+func NewPostgres(config PostgresConfig, sequence Sequence, batchHandlerProvider func(writer batch.Writer) batch.Handler, timeProvider TimeProvider, traceProvider trace.TracerProvider) (Message, error) {
+	p := &postgresImpl{
+		config:       config,
+		sequences:    sequence,
+		timeProvider: timeProvider,
+	}
+	p.batchHandler = batchHandlerProvider(p.saveBatch)
+
 	if err := p.initDB(); err != nil {
 		return nil, err
 	}
@@ -112,26 +120,7 @@ func (p *postgresImpl) loadSequences() error {
 }
 
 func (p *postgresImpl) SaveMessage(ctx context.Context, subject string, message *broker.Message) error {
-	newId, err := p.sequences.CreateNewId(ctx, subject)
-	if err != nil {
-		return err
-	}
-
-	msg := postgresMessage{
-		Subject:           subject,
-		Id:                newId,
-		Body:              message.Body,
-		ExpirationSeconds: message.Expiration.Seconds(),
-	}
-
-	result := p.db.WithContext(ctx).Create(&msg)
-	if result.Error != nil {
-		return result.Error
-	}
-
-	message.Id = int(msg.Id)
-
-	return nil
+	return p.batchHandler.AddAndWait(ctx, subject, message)
 }
 
 func (p *postgresImpl) GetMessage(ctx context.Context, subject string, id int) (*broker.Message, error) {
@@ -161,6 +150,31 @@ func (p *postgresImpl) GetMessage(ctx context.Context, subject string, id int) (
 	}
 
 	return &message, nil
+}
+
+func (p *postgresImpl) saveBatch(ctx context.Context, values []*batch.Item) error {
+	messages := make([]postgresMessage, len(values))
+	for i := range messages {
+		newId, err := p.sequences.CreateNewId(ctx, values[i].Subject)
+		if err != nil {
+			return err
+		}
+		messages[i].Id = newId
+		messages[i].Subject = values[i].Subject
+		messages[i].Body = values[i].Message.Body
+		messages[i].ExpirationSeconds = values[i].Message.Expiration.Seconds()
+	}
+
+	err := p.db.WithContext(ctx).CreateInBatches(messages, len(messages)).Error
+	if err != nil {
+		return err
+	}
+
+	for i, message := range messages {
+		values[i].Message.Id = int(message.Id)
+	}
+
+	return nil
 }
 
 type postgresMessage struct {

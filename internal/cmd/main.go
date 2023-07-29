@@ -7,6 +7,7 @@ import (
 	"github.com/MeysamBavi/go-broker/internal/broker"
 	"github.com/MeysamBavi/go-broker/internal/config"
 	"github.com/MeysamBavi/go-broker/internal/store"
+	"github.com/MeysamBavi/go-broker/internal/store/batch"
 	"github.com/MeysamBavi/go-broker/internal/tracing"
 	"github.com/MeysamBavi/go-broker/pkg/metrics"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
@@ -38,6 +39,11 @@ func Execute() {
 	sequenceStore = store.NewInMemorySequence()
 	sequenceStore = store.SequenceWithTracing(sequenceStore, tracerProvider)
 
+	var batchHandlerProvider func(writer batch.Writer) batch.Handler
+	batchHandlerProvider = func(writer batch.Writer) batch.Handler {
+		return batch.NewHandler(cfg.Batch, writer, tracerProvider)
+	}
+
 	var msgStore store.Message
 	switch {
 	case cfg.Store.UseInMemory:
@@ -48,7 +54,7 @@ func Execute() {
 			log.Fatal("could not connect to cassandra: ", err)
 		}
 	case cfg.Store.UsePostgres:
-		msgStore, err = store.NewPostgres(cfg.Store.Postgres, sequenceStore, store.GetDefaultTimeProvider(), tracerProvider)
+		msgStore, err = store.NewPostgres(cfg.Store.Postgres, sequenceStore, batchHandlerProvider, store.GetDefaultTimeProvider(), tracerProvider)
 		if err != nil {
 			log.Fatal("could not connect to postgres: ", err)
 		}
