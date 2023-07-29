@@ -16,7 +16,6 @@ type Config struct {
 	Store   store.Config   `config:"store"`
 	Metrics metrics.Config `config:"metrics"`
 	Tracing tracing.Config `config:"tracing"`
-	Batch   batch.Config   `config:"batch"`
 }
 
 func (c *Config) Validate() error {
@@ -62,6 +61,10 @@ func Default() Config {
 				DBName:         "go_broker",
 				MaxConnections: 100,
 			},
+			Batch: batch.Config{
+				Timeout: 5 * time.Millisecond,
+				Size:    2048,
+			},
 		},
 		Metrics: metrics.Config{
 			Enabled:  true,
@@ -74,10 +77,6 @@ func Default() Config {
 			JaegerAgentHost:  "localhost",
 			JaegerAgentPort:  "6831",
 			SamplingFraction: 1,
-		},
-		Batch: batch.Config{
-			Timeout: 5 * time.Millisecond,
-			Size:    2048,
 		},
 	}
 }

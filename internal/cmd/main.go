@@ -41,7 +41,7 @@ func Execute() {
 
 	var batchHandlerProvider func(writer batch.Writer) batch.Handler
 	batchHandlerProvider = func(writer batch.Writer) batch.Handler {
-		return batch.NewHandler(cfg.Batch, writer, tracerProvider)
+		return batch.NewHandler(cfg.Store.Batch, writer, tracerProvider)
 	}
 
 	var msgStore store.Message
