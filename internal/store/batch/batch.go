@@ -9,12 +9,11 @@ import (
 type Item struct {
 	Subject string
 	Message *broker.Message
-	Ctx     context.Context
 	Err     error
 	resolve chan struct{}
 }
 
-type Writer func(values []*Item) error
+type Writer func(ctx context.Context, values []*Item) error
 
 type Config struct {
 	Timeout time.Duration `config:"timeout"`
