@@ -16,6 +16,7 @@ services:
       - GO_BROKER_STORE__POSTGRES__HOST=postgres
       - GO_BROKER_STORE__POSTGRES__PORT=5432
       - GO_BROKER_STORE__POSTGRES__MAX_CONNECTIONS=1000
+      - GO_BROKER_STORE__BATCH__SIZE=2700
       - GO_BROKER_TRACING__ENABLED=false
     deploy:
       resources:
