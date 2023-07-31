@@ -7,6 +7,7 @@ import (
 	"github.com/MeysamBavi/go-broker/internal/broker"
 	"github.com/MeysamBavi/go-broker/internal/config"
 	"github.com/MeysamBavi/go-broker/internal/store"
+	"github.com/MeysamBavi/go-broker/internal/store/batch"
 	"github.com/MeysamBavi/go-broker/internal/tracing"
 	"github.com/MeysamBavi/go-broker/pkg/metrics"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
@@ -34,17 +35,26 @@ func Execute() {
 	tracerProvider, shutdown := tracing.NewTracerProvider(cfg.Tracing)
 	defer shutdown()
 
+	var sequenceStore store.Sequence
+	sequenceStore = store.NewInMemorySequence()
+	sequenceStore = store.SequenceWithTracing(sequenceStore, tracerProvider)
+
+	var batchHandlerProvider func(writer batch.Writer) batch.Handler
+	batchHandlerProvider = func(writer batch.Writer) batch.Handler {
+		return batch.NewHandler(cfg.Store.Batch, writer, tracerProvider)
+	}
+
 	var msgStore store.Message
 	switch {
 	case cfg.Store.UseInMemory:
 		msgStore = store.NewInMemoryMessage(store.GetDefaultTimeProvider())
 	case cfg.Store.UseCassandra:
-		msgStore, err = store.NewCassandra(cfg.Store.Cassandra, tracerProvider)
+		msgStore, err = store.NewCassandra(cfg.Store.Cassandra, sequenceStore, batchHandlerProvider, tracerProvider)
 		if err != nil {
 			log.Fatal("could not connect to cassandra: ", err)
 		}
 	case cfg.Store.UsePostgres:
-		msgStore, err = store.NewPostgres(cfg.Store.Postgres, store.GetDefaultTimeProvider(), tracerProvider)
+		msgStore, err = store.NewPostgres(cfg.Store.Postgres, sequenceStore, batchHandlerProvider, store.GetDefaultTimeProvider(), tracerProvider)
 		if err != nil {
 			log.Fatal("could not connect to postgres: ", err)
 		}

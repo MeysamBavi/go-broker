@@ -1,0 +1,62 @@
+version: "3.8"
+services:
+  broker:
+    image: "go-broker"
+    build:
+      context: ./
+    ports:
+      - "50043:50043"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      - GO_BROKER_SERVER__HOST=0.0.0.0:50043
+      - GO_BROKER_STORE__IN_MEMORY=false
+      - GO_BROKER_STORE__USE_POSTGRES=true
+      - GO_BROKER_STORE__POSTGRES__HOST=postgres
+      - GO_BROKER_STORE__POSTGRES__PORT=5432
+      - GO_BROKER_STORE__POSTGRES__MAX_CONNECTIONS=200
+      - GO_BROKER_STORE__BATCH__SIZE=2700
+      - GO_BROKER_TRACING__ENABLED=false
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1GB
+
+  postgres:
+    image: postgres:15.3
+    environment:
+      - POSTGRES_PASSWORD=postgres
+    healthcheck:
+      test: ["CMD", "pg_isready"]
+      interval: 10s
+      retries: 5
+      timeout: 5s
+      start_period: 30s
+    command:
+      - postgres
+      - -c
+      - max_connections=200
+
+  metrics:
+    image: prom/prometheus:v2.45.0
+    ports:
+      - "9090:9090"
+    volumes:
+      - "./prometheus.yml:/etc/prometheus/prometheus.yml"
+    depends_on:
+      - broker
+
+  grafana:
+    image: grafana/grafana-enterprise:10.0.2
+    restart: unless-stopped
+    ports:
+      - '3000:3000'
+    volumes:
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - metrics
+
+volumes:
+  grafana_data:

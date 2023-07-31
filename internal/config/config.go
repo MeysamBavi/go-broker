@@ -4,9 +4,11 @@ import (
 	"fmt"
 	"github.com/MeysamBavi/go-broker/api/server"
 	"github.com/MeysamBavi/go-broker/internal/store"
+	"github.com/MeysamBavi/go-broker/internal/store/batch"
 	"github.com/MeysamBavi/go-broker/internal/tracing"
 	"github.com/MeysamBavi/go-broker/pkg/metrics"
 	"strings"
+	"time"
 )
 
 type Config struct {
@@ -52,11 +54,16 @@ func Default() Config {
 			},
 			UsePostgres: false,
 			Postgres: store.PostgresConfig{
-				Host:     "localhost",
-				Port:     "5432",
-				User:     "postgres",
-				Password: "postgres",
-				DBName:   "go_broker",
+				Host:           "localhost",
+				Port:           "5432",
+				User:           "postgres",
+				Password:       "postgres",
+				DBName:         "go_broker",
+				MaxConnections: 100,
+			},
+			Batch: batch.Config{
+				Timeout: 5 * time.Millisecond,
+				Size:    2048,
 			},
 		},
 		Metrics: metrics.Config{

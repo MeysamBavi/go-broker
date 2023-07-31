@@ -1,95 +1,49 @@
 package main
 
 import (
-	"context"
+	"encoding/json"
 	"flag"
 	"fmt"
-	pb "github.com/MeysamBavi/go-broker/api/proto"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
-	"io"
+	"github.com/MeysamBavi/go-broker/api/client/collector"
+	"github.com/MeysamBavi/go-broker/api/client/config"
+	"github.com/MeysamBavi/go-broker/api/client/scheduler"
+	"github.com/MeysamBavi/go-broker/api/client/sender"
 	"log"
-	"time"
 )
 
 var (
-	host    = flag.String("host", "localhost:50043", "the host to connect to")
-	subject = flag.String("subject", "alpha", "the subject of messages")
+	host     = flag.String("host", "localhost:50043", "the host to connect to")
+	verbose  = flag.Bool("verbose", false, "log more info")
+	subjects = flag.Int("subjects", 0, "limits the number of different subjects used")
 )
 
 func main() {
 	flag.Parse()
 
-	conn, err := grpc.Dial(*host, grpc.WithTransportCredentials(insecure.NewCredentials()))
-	defer conn.Close()
+	cfg := config.Load()
+	cfgJson, err := json.MarshalIndent(cfg, "", "	")
 	if err != nil {
-		log.Fatal("could not connect to server", err)
+		log.Fatal(err)
+	}
+	fmt.Printf("%s\n", cfgJson)
+
+	s := sender.Sender{
+		Host: *host,
+		PublishStream: scheduler.SchedulePublish(config.Scheduler{
+			StartRPS:        cfg.StartRPS,
+			TargetRPS:       cfg.TargetRPS,
+			RiseDuration:    cfg.RiseDuration,
+			PlateauDuration: cfg.PlateauDuration,
+			Subjects:        *subjects,
+		}),
+		Connections: cfg.Connections,
+		Verbose:     *verbose,
 	}
 
-	client := pb.NewBrokerClient(conn)
-
-	ctx := context.Background()
-	messages, err := client.Subscribe(ctx, &pb.SubscribeRequest{
-		Subject: *subject,
-	})
-	if err != nil {
-		log.Fatal("could not call Subscribe: ", err)
-	}
-
-	publishAndFetch(client, "neo", 11)
-	publishAndFetch(client, "smith", 7)
-
-	resp, streamErr := messages.Recv()
-	for streamErr == nil {
-		log.Printf("\t\tgot message %q\n", resp.GetBody())
-		resp, streamErr = messages.Recv()
-	}
-	if streamErr == io.EOF {
-		log.Println("got all messages")
-	} else {
-		log.Fatal("unknown error while reading stream: ", streamErr)
-	}
-}
-
-func publishAndFetch(client pb.BrokerClient, prefix string, count int) {
-	ids := make(chan int32, 1)
-	go publishMessages(client, prefix, count, ids)
-	go fetchMessages(client, ids)
-}
-
-func publishMessages(client pb.BrokerClient, prefix string, count int, ids chan<- int32) {
-	defer close(ids)
-	i := 0
-	for ; count > 0; count-- {
-		ctx := context.Background()
-		body := fmt.Appendf(nil, "%s-%d", prefix, i)
-		resp, err := client.Publish(ctx, &pb.PublishRequest{
-			Subject:           *subject,
-			Body:              body,
-			ExpirationSeconds: 1,
-		})
-		if err != nil {
-			log.Println("could not publish: ", err)
-			return
+	for summary := range collector.Collect(s.Start()) {
+		fmt.Printf("perceived throughput: %8.2f\terror rate: %.2f\n", summary.Throughput, summary.ErrorRate)
+		if summary.ErrorRate > cfg.ErrorRateThreshold {
+			log.Fatal("error rate passed threshold")
 		}
-		log.Printf("published %q with id %d\n", body, resp.GetId())
-		ids <- resp.GetId()
-		i++
-		time.Sleep(500 * time.Millisecond)
-	}
-}
-
-func fetchMessages(client pb.BrokerClient, ids <-chan int32) {
-	ctx := context.Background()
-	for id := range ids {
-		response, err := client.Fetch(ctx, &pb.FetchRequest{
-			Subject: *subject,
-			Id:      id,
-		})
-		if err != nil {
-			log.Printf("could not fetch id=%d: %v\n", id, err)
-			return
-		}
-		log.Printf("fetched %q with id %d\n", response.GetBody(), id)
 	}
 }
