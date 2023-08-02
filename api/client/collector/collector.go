@@ -1,6 +1,9 @@
 package collector
 
 import (
+	"github.com/MeysamBavi/go-broker/api/client/config"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"time"
 )
 
@@ -19,7 +22,7 @@ const (
 	samples      = 1000
 )
 
-func Collect(logStream <-chan ResponseLog) <-chan Summary {
+func Collect(cfg config.Collector, logStream <-chan ResponseLog) <-chan Summary {
 	index := 0
 	buffer := make([]ResponseLog, samples)
 
@@ -35,7 +38,7 @@ func Collect(logStream <-chan ResponseLog) <-chan Summary {
 			if log.At.Before(minAt) {
 				minAt = log.At
 			}
-			if log.Error != nil {
+			if log.Error != nil && (!cfg.IgnoreUnavailableError || status.Code(log.Error) != codes.Unavailable) {
 				failed++
 			}
 			total++

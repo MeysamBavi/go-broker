@@ -24,17 +24,15 @@ type Sender struct {
 }
 
 func (s *Sender) Start() <-chan collector.ResponseLog {
-	publishStream := s.PublishStream
-	if publishStream == nil {
+	if s.PublishStream == nil {
 		ch := make(chan *pb.PublishRequest)
 		close(ch)
-		publishStream = ch
+		s.PublishStream = ch
 	}
-	fetchStream := s.FetchStream
-	if fetchStream == nil {
+	if s.FetchStream == nil {
 		ch := make(chan *pb.FetchRequest)
 		close(ch)
-		fetchStream = ch
+		s.FetchStream = ch
 	}
 
 	responseLogStream := make(chan collector.ResponseLog, responseReceiveChannelBuffer)
@@ -42,7 +40,7 @@ func (s *Sender) Start() <-chan collector.ResponseLog {
 	for i := 0; i < s.Connections; i++ {
 		wg.Add(1)
 		go func() {
-			handleConnection(s.Host, publishStream, fetchStream, responseLogStream, s.Verbose)
+			s.handleConnection(responseLogStream)
 			wg.Done()
 		}()
 	}
@@ -54,8 +52,8 @@ func (s *Sender) Start() <-chan collector.ResponseLog {
 	return responseLogStream
 }
 
-func handleConnection(host string, publishStream <-chan *pb.PublishRequest, fetchStream <-chan *pb.FetchRequest, responseLogStream chan<- collector.ResponseLog, verbose bool) {
-	conn, err := grpc.Dial(host, grpc.WithTransportCredentials(insecure.NewCredentials()))
+func (s *Sender) handleConnection(responseLogStream chan<- collector.ResponseLog) {
+	conn, err := grpc.Dial(s.Host, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	defer conn.Close()
 	if err != nil {
 		log.Fatal("could not connect to server", err)
@@ -68,9 +66,9 @@ func handleConnection(host string, publishStream <-chan *pb.PublishRequest, fetc
 	go func() {
 		ctx, cancel := context.WithCancel(context.Background())
 		var publishWg sync.WaitGroup
-		for request := range publishStream {
+		for request := range s.PublishStream {
 			publishWg.Add(1)
-			go sendPublishRequest(&publishWg, client, ctx, request, responseLogStream, verbose)
+			go s.sendPublishRequest(&publishWg, client, ctx, request, responseLogStream)
 		}
 		cancel()
 		publishWg.Wait()
@@ -81,9 +79,9 @@ func handleConnection(host string, publishStream <-chan *pb.PublishRequest, fetc
 	go func() {
 		ctx, cancel := context.WithCancel(context.Background())
 		var fetchWg sync.WaitGroup
-		for request := range fetchStream {
+		for request := range s.FetchStream {
 			fetchWg.Add(1)
-			go sendFetchRequest(&fetchWg, client, ctx, request, responseLogStream, verbose)
+			go s.sendFetchRequest(&fetchWg, client, ctx, request, responseLogStream)
 		}
 		cancel()
 		fetchWg.Wait()
@@ -93,9 +91,9 @@ func handleConnection(host string, publishStream <-chan *pb.PublishRequest, fetc
 	wg.Wait()
 }
 
-func sendPublishRequest(wg *sync.WaitGroup, client pb.BrokerClient, ctx context.Context, request *pb.PublishRequest, receiveTimeStream chan<- collector.ResponseLog, verbose bool) {
+func (s *Sender) sendPublishRequest(wg *sync.WaitGroup, client pb.BrokerClient, ctx context.Context, request *pb.PublishRequest, receiveTimeStream chan<- collector.ResponseLog) {
 	res, err := client.Publish(ctx, request)
-	if verbose {
+	if s.Verbose {
 		if err != nil {
 			log.Printf("could not publish: %v\n", err)
 		} else {
@@ -109,9 +107,9 @@ func sendPublishRequest(wg *sync.WaitGroup, client pb.BrokerClient, ctx context.
 	wg.Done()
 }
 
-func sendFetchRequest(wg *sync.WaitGroup, client pb.BrokerClient, ctx context.Context, request *pb.FetchRequest, receiveTimeStream chan<- collector.ResponseLog, verbose bool) {
+func (s *Sender) sendFetchRequest(wg *sync.WaitGroup, client pb.BrokerClient, ctx context.Context, request *pb.FetchRequest, receiveTimeStream chan<- collector.ResponseLog) {
 	res, err := client.Fetch(ctx, request)
-	if verbose {
+	if s.Verbose {
 		if err != nil {
 			log.Printf("could not fetch: %v\n", err)
 		} else {
