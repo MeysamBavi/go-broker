@@ -96,7 +96,11 @@ func handleConnection(host string, publishStream <-chan *pb.PublishRequest, fetc
 func sendPublishRequest(wg *sync.WaitGroup, client pb.BrokerClient, ctx context.Context, request *pb.PublishRequest, receiveTimeStream chan<- collector.ResponseLog, verbose bool) {
 	res, err := client.Publish(ctx, request)
 	if verbose {
-		log.Printf("published %q to subject %q, got id = %d\n", request.GetBody(), request.GetSubject(), res.GetId())
+		if err != nil {
+			log.Printf("could not publish: %v\n", err)
+		} else {
+			log.Printf("published %q to subject %q, got id = %d\n", request.GetBody(), request.GetSubject(), res.GetId())
+		}
 	}
 	receiveTimeStream <- collector.ResponseLog{
 		At:    time.Now(),
@@ -108,7 +112,11 @@ func sendPublishRequest(wg *sync.WaitGroup, client pb.BrokerClient, ctx context.
 func sendFetchRequest(wg *sync.WaitGroup, client pb.BrokerClient, ctx context.Context, request *pb.FetchRequest, receiveTimeStream chan<- collector.ResponseLog, verbose bool) {
 	res, err := client.Fetch(ctx, request)
 	if verbose {
-		log.Printf("fetched id = %d from subject %q, got %q\n", request.GetId(), request.GetSubject(), res.GetBody())
+		if err != nil {
+			log.Printf("could not fetch: %v\n", err)
+		} else {
+			log.Printf("fetched id = %d from subject %q, got %q\n", request.GetId(), request.GetSubject(), res.GetBody())
+		}
 	}
 	receiveTimeStream <- collector.ResponseLog{
 		At:    time.Now(),
