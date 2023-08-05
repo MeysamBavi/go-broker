@@ -8,14 +8,14 @@ services:
       postgres:
         condition: service_healthy
     environment:
-      - GO_BROKER_SERVER__HOST=0.0.0.0:50043
-      - GO_BROKER_STORE__IN_MEMORY=false
-      - GO_BROKER_STORE__USE_POSTGRES=true
-      - GO_BROKER_STORE__POSTGRES__HOST=postgres
-      - GO_BROKER_STORE__POSTGRES__PORT=5432
-      - GO_BROKER_STORE__POSTGRES__MAX_CONNECTIONS=200
-      - GO_BROKER_STORE__BATCH__SIZE=2700
-      - GO_BROKER_TRACING__ENABLED=false
+      - GO_BROKER__SERVER__HOST=0.0.0.0:50043
+      - GO_BROKER__STORE__IN_MEMORY=false
+      - GO_BROKER__STORE__USE_POSTGRES=true
+      - GO_BROKER__STORE__POSTGRES__HOST=postgres
+      - GO_BROKER__STORE__POSTGRES__PORT=5432
+      - GO_BROKER__STORE__POSTGRES__MAX_CONNECTIONS=200
+      - GO_BROKER__STORE__BATCH__SIZE=2700
+      - GO_BROKER__TRACING__ENABLED=false
     deploy:
       resources:
         limits:

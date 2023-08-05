@@ -13,7 +13,7 @@ import (
 const (
 	tag                = "config"
 	delimiter          = "."
-	prefix             = "GO_BROKER_"
+	prefix             = "GO_BROKER__"
 	separator          = "__"
 	jsonConfigFilePath = "config.json"
 )

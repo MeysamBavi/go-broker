@@ -8,8 +8,8 @@ services:
       - "50043:50043"
       - "2112:2112"
     environment:
-      - GO_BROKER_SERVER__HOST=0.0.0.0:50043
-      - GO_BROKER_TRACING__ENABLED=false
+      - GO_BROKER__SERVER__HOST=0.0.0.0:50043
+      - GO_BROKER__TRACING__ENABLED=false
     deploy:
       resources:
         limits:

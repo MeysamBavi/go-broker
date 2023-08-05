@@ -10,13 +10,13 @@ services:
       scylla:
         condition: service_healthy
     environment:
-      - GO_BROKER_SERVER__HOST=0.0.0.0:50043
-      - GO_BROKER_STORE__IN_MEMORY=false
-      - GO_BROKER_STORE__USE_CASSANDRA=true
-      - GO_BROKER_STORE__CASSANDRA__HOST=scylla:9042
-      - GO_BROKER_STORE__CASSANDRA__KEYSPACE=go_broker
-      - GO_BROKER_STORE__BATCH_SIZE=4096
-      - GO_BROKER_TRACING__ENABLED=false
+      - GO_BROKER__SERVER__HOST=0.0.0.0:50043
+      - GO_BROKER__STORE__IN_MEMORY=false
+      - GO_BROKER__STORE__USE_CASSANDRA=true
+      - GO_BROKER__STORE__CASSANDRA__HOST=scylla:9042
+      - GO_BROKER__STORE__CASSANDRA__KEYSPACE=go_broker
+      - GO_BROKER__STORE__BATCH_SIZE=4096
+      - GO_BROKER__TRACING__ENABLED=false
     deploy:
       resources:
         limits:
