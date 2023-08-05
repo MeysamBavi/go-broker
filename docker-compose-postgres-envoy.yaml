@@ -65,7 +65,7 @@ services:
       - -c
       - /custom-config.yaml
     volumes:
-      - "./envoy-config.yaml:/custom-config.yaml"
+      - "./envoy.yaml:/custom-config.yaml"
     depends_on:
       - broker
 
