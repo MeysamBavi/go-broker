@@ -1,0 +1,27 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: go-broker-cassandra-dep
+spec:
+  template:
+    metadata:
+      name: cassandra
+      labels:
+        app: go-broker-cassandra
+    spec:
+      containers:
+        - name: cassandra
+          image: cassandra:4.1
+          ports:
+            - containerPort: 9042
+          startupProbe:
+            initialDelaySeconds: 65
+            exec:
+              command:
+                - cqlsh
+                - -e
+                - "describe keyspaces ;"
+  selector:
+    matchLabels:
+      app: go-broker-cassandra
+  replicas: 1

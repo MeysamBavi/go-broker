@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: grafana
+spec:
+  type: NodePort
+  ports:
+    - port: 3000
+      nodePort: 30003
+      name: access-port
+  selector:
+    app: go-broker-grafana

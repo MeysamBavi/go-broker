@@ -1,0 +1,28 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: go-broker-envoy-dep
+spec:
+  template:
+    metadata:
+      name: envoy
+      labels:
+        app: go-broker-envoy
+    spec:
+      containers:
+        - name: envoy
+          image: envoyproxy/envoy:v1.27-latest
+          ports:
+            - containerPort: 9901
+            - containerPort: 50043
+          volumeMounts:
+            - mountPath: /etc/envoy
+              name: envoy-config
+      volumes:
+        - name: envoy-config
+          configMap:
+            name: envoy-configmap
+  selector:
+    matchLabels:
+      app: go-broker-envoy
+  replicas: 1
