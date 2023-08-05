@@ -12,9 +12,10 @@ import (
 )
 
 var (
-	host     = flag.String("host", "localhost:50043", "the host to connect to")
-	verbose  = flag.Bool("verbose", false, "log more info")
-	subjects = flag.Int("subjects", 0, "limits the number of different subjects used")
+	host                   = flag.String("host", "localhost:50043", "the host to connect to")
+	verbose                = flag.Bool("verbose", false, "log more info")
+	subjects               = flag.Int("subjects", 0, "limits the number of different subjects used")
+	ignoreUnavailableError = flag.Bool("ignore-unavailable", false, "omits unavailable grpc response in errors")
 )
 
 func main() {
@@ -40,7 +41,10 @@ func main() {
 		Verbose:     *verbose,
 	}
 
-	for summary := range collector.Collect(s.Start()) {
+	for summary := range collector.Collect(
+		config.Collector{
+			IgnoreUnavailableError: *ignoreUnavailableError,
+		}, s.Start()) {
 		fmt.Printf("perceived throughput: %8.2f\terror rate: %.2f\n", summary.Throughput, summary.ErrorRate)
 		if summary.ErrorRate > cfg.ErrorRateThreshold {
 			log.Fatal("error rate passed threshold")

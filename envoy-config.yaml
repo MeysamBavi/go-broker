@@ -1,0 +1,86 @@
+static_resources:
+  listeners:
+    - name: listener_0
+      address:
+        socket_address:
+          address: 0.0.0.0   # Listen on all available network interfaces
+          port_value: 50043  # Listen on port 50043 for incoming connections
+      filter_chains:
+        - filters:
+            - name: envoy.filters.network.http_connection_manager
+              typed_config:
+                "@type": type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager
+                stat_prefix: ingress_http
+                access_log:
+                  - name: envoy.access_loggers.stdout
+                    typed_config:
+                      "@type": type.googleapis.com/envoy.extensions.access_loggers.stream.v3.StdoutAccessLog
+                http_filters:
+                  # Apply local rate limiting to all paths to the service
+                  - name: envoy.filters.http.local_ratelimit
+                    typed_config:
+                      "@type": type.googleapis.com/envoy.extensions.filters.http.local_ratelimit.v3.LocalRateLimit
+                      stat_prefix: local_rate_limiter
+                      token_bucket:
+                        max_tokens: 1000   # Maximum number of tokens in the bucket
+                        tokens_per_fill: 1000  # Number of tokens added to the bucket per fill
+                        fill_interval: 1s  # Interval at which tokens are added to the bucket
+                      filter_enabled:
+                        runtime_key: local_rate_limit_enabled
+                        default_value:
+                          numerator: 100
+                          denominator: HUNDRED
+                      filter_enforced:
+                        runtime_key: local_rate_limit_enforced
+                        default_value:
+                          numerator: 100
+                          denominator: HUNDRED
+                      response_headers_to_add:
+                        - append_action: OVERWRITE_IF_EXISTS_OR_ADD
+                          header:
+                            key: x-local-rate-limit
+                            value: 'true'
+                      local_rate_limit_per_downstream_connection: false
+                  - name: envoy.filters.http.router
+                    typed_config:
+                      "@type": type.googleapis.com/envoy.extensions.filters.http.router.v3.Router
+                codec_type: HTTP2
+                route_config:
+                  name: local_route
+                  virtual_hosts:
+                    - name: backend
+                      domains: ["*"]  # Accept requests for any domain
+                      routes:
+                        - match:
+                            # Match gRPC requests
+                            grpc: {}
+                            prefix: "/"
+                          route:
+                            cluster: broker_service # Forward to the gRPC broker service
+
+  clusters:
+    - name: broker_service
+      connect_timeout: 5s  # Timeout for establishing connections to the backend service
+      type: STRICT_DNS
+      lb_policy: ROUND_ROBIN  # Load balancing policy for backend instances
+      typed_extension_protocol_options:
+        envoy.extensions.upstreams.http.v3.HttpProtocolOptions:
+          "@type": type.googleapis.com/envoy.extensions.upstreams.http.v3.HttpProtocolOptions
+          explicit_http_config:
+            http2_protocol_options: {}
+      load_assignment:
+        cluster_name: broker_service
+        endpoints:
+          - lb_endpoints:
+              - endpoint:
+                  address:
+                    socket_address:
+                      address: broker
+                      port_value: 50043
+
+# Define the admin interface for managing Envoy Proxy (Optional)
+admin:
+  address:
+    socket_address:
+      address: 0.0.0.0
+      port_value: 9901  # Use port 9901 for the admin interface
