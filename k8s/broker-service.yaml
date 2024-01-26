@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: broker
+spec:
+  type: ClusterIP
+  ports:
+    - port: 50043
+      name: grpc-endpoint
+    - port: 2112
+      name: metrics-endpoint
+  selector:
+    app: go-broker-broker

@@ -1,0 +1,27 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: go-broker-metrics-dep
+spec:
+  template:
+    metadata:
+      name: metrics
+      labels:
+        app: go-broker-metrics
+    spec:
+      containers:
+        - name: metrics
+          image: prom/prometheus:v2.45.0
+          ports:
+            - containerPort: 9090
+          volumeMounts:
+            - mountPath: /etc/prometheus
+              name: prometheus-config
+      volumes:
+        - name: prometheus-config
+          configMap:
+            name: prometheus-configmap
+  selector:
+    matchLabels:
+      app: go-broker-metrics
+  replicas: 1
