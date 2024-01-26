@@ -1,25 +1,53 @@
-# Welcome project for newcomers!
+# Message broker in Go
 
-# Introduction
-In this project you have to implement a message broker, based on `broker.Broker`
-interface. There are unit tests to specify requirements and also validate your implementation.
+## Overview
+This project implements a simple message broker in **Go**, with three **gRPC** endpoints: *publish*, *fetch*, and *subscribe*. It features a clean and efficient codebase, supports flexible storage, and is containerized and deployed using **Docker** and **Kubernetes**.  
+This was part of *Bale* messenger's bootcamp.
 
-# Roadmap
-- [ ] Implement `broker.Broker` interface and pass all tests
-- [ ] Add basic logs and prometheus metrics
-  - Metrics for each RPCs:
-    - `method_count` to show count of failed/successful RPC calls
-    - `method_duration` for latency of each call, in 99, 95, 50 quantiles
-    - `active_subscribers` to display total active subscriptions
-  - Env metrics:
-    - Metrics for your application memory, cpu load, cpu utilization, GCs
-- [ ] Implement gRPC API for the broker and main functionalities
-- [ ] Create *dockerfile* and *docker-compose* files for your deployment
-- [ ] Deploy your app with the previous `docker-compose` on a remote machine
-- [ ] Deploy your app on K8
+## Key Features
 
-# Phase 2 Evaluation
-We run our gRPC client that implemented the `broker.proto` against your deployed broker application.
+- **Storage Flexibility**: Utilizes three storage approaches; in-memory, **PostgreSQL**, and **Cassandra**
 
-As it should function properly ( like the unit tests ), we expect the provided metrics to display a good observation, and if
-anything unexpected happened, you could diagnose your app, using the logs and other tools.
+- **Containerization and Deployment**:
+  - Leverages Docker for containerization
+  - Incorporates Kubernetes for deployment, including resources and *Bash* scripts for seamless application setup and teardown
+
+- **Clean and Efficient Codebase**:
+  - Written in Go, emphasizing clean code and high efficiency
+  - Utilizes interfaces for flexibility and modularity
+  - Organizes code into different packages and layers for improved modularity
+
+- **Monitoring and Metrics**:
+  - Employs **Prometheus** for comprehensive metric solutions
+  - Integrates **Grafana** for intuitive visualization of performance metrics
+
+- **Tracing**:
+  - Uses **Jaeger** for tracing.
+  - Utilizes the **OpenTracing** library in Go for creating spans and collecting trace data
+
+- **Rate Limiting**: Uses **Envoy proxy** for traffic management and rate limiting
+
+- **Load Testing**:
+  - Employs **k6** for load testing, measuring performance across different storage technologies
+  - Includes a **Go gRPC client** for load testing, as a superior alternative to k6 scripts
+
+- **Optimization through Batch Creation**:
+  - Leverages *'batch creation'* method to optimize the *publish* procedure during high insertion loads
+  - Modular batch logic applicable across various storage technologies as a reusable dependency
+
+## Data Model
+- Different message queue for each subscriber
+- Unique ID per subject (topic) for stored messages
+- Time-to-live for messages, ensuring expiration after a specified duration
+
+## How to run
+### Docker
+Select one of different docker compose files, depending on your intended configuration; For example `docker-compose-postgres-loadtest.yaml`. Then run
+```shell
+docker compose -f docker-compose-postgres-loadtest.yaml up
+```
+### Kubernetes
+```shell
+./k8s/up.sh
+```
+Grafana can be accessed on `host:3000`.
