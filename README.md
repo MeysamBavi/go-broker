@@ -4,6 +4,15 @@
 This project implements a simple message broker in **Go**, with three **gRPC** endpoints: *publish*, *fetch*, and *subscribe*. It features a clean and efficient codebase, supports flexible storage, and is containerized and deployed using **Docker** and **Kubernetes**.  
 This was part of *Bale* messenger's bootcamp.
 
+## Architecture
+<div align="center">
+
+![Software Architecture](assets/arch.svg)
+
+<p>Each published message is stored and broadcast to all subscribers</p>
+
+</div>
+
 ## Key Features
 
 - **Storage Flexibility**: Utilizes three storage approaches; in-memory, **PostgreSQL**, and **Cassandra**
@@ -36,7 +45,6 @@ This was part of *Bale* messenger's bootcamp.
   - Modular batch logic applicable across various storage technologies as a reusable dependency
 
 ## Data Model
-- Different message queue for each subscriber
 - Unique ID per subject (topic) for stored messages
 - Time-to-live for messages, ensuring expiration after a specified duration
 
